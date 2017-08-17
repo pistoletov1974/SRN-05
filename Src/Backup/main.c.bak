@@ -54,17 +54,19 @@
 #include "sdio.h"
 #include "spi.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "max7219.h"
+#include "main.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+uint8_t time[4];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -76,6 +78,33 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+#define ITM_Port8(n)    (*((volatile unsigned char *)(0xE0000000+4*n)))
+#define ITM_Port16(n)   (*((volatile unsigned short*)(0xE0000000+4*n)))
+#define ITM_Port32(n)   (*((volatile unsigned long *)(0xE0000000+4*n)))
+#define DEMCR           (*((volatile unsigned long *)(0xE000EDFC)))
+#define TRCENA          0x01000000
+#define VALVE_OFF        HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_SET)
+#define VALVE_ON        HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_RESET)
+
+
+struct __FILE { int handle; /* Add whatever you need here */ };
+FILE __stdout;
+FILE __stdin;
+
+int fputc(int ch, FILE *f) {
+   if (DEMCR & TRCENA) {
+
+while (ITM_Port32(0) == 0);
+    ITM_Port8(0) = ch;
+  }
+  return(ch);
+}
+
+
+
+
+
+
 
 /* USER CODE END 0 */
 
@@ -111,9 +140,30 @@ int main(void)
   MX_TIM2_Init();
   MX_RTC_Init();
   MX_FATFS_Init();
+  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
-
+	 DWT_Init();
+   init_max7219(14);
+	 printf("Text\n\r");
+	
+	 HAL_Delay(1000);
+	 displayNumberLow(100);
+	 HAL_Delay(1000);
+	 displayNumberLow(5);
+	 HAL_Delay(1000);
+	 displayNumberLow(777);
+	 HAL_Delay(1000);
+	 displayNumberLow(7077);
+	 
+	 for (int i=0; i<9999; i++) {
+	 displayNumberLow(i);
+	 DWT_Delay(10000);	 
+	 displayNumberHigh(i); 
+	 }
+	 
+	 
+	 
   /* USER CODE END 2 */
 
   /* Infinite loop */

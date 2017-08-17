@@ -58,11 +58,9 @@
 
 /* USER CODE BEGIN Private defines */
 
-
 /* USER CODE END Private defines */
 
 void _Error_Handler(char *, int);
-//void timeToDigits(uint8_t hours, uint8_t minutes, uint8_t* result);
 
 #define Error_Handler() _Error_Handler(__FILE__, __LINE__)
 

@@ -46,7 +46,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-
+#include "main.h"
 #include "stm32f4xx_hal.h"
 #include "fatfs.h"
 #include "i2c.h"
@@ -54,8 +54,8 @@
 #include "sdio.h"
 #include "spi.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
-#include "delay_micros.h"
 
 /* USER CODE BEGIN Includes */
 #include "max7219.h"
@@ -78,12 +78,34 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-void timeToDigits(uint8_t hours, uint8_t minutes, uint8_t* result) {
-  result[1] = hours % 10;
-  result[0] = (hours / 10) % 10;
-  result[3] = minutes % 10;
-  result[2] = (minutes / 10) % 10;
+#define ITM_Port8(n)    (*((volatile unsigned char *)(0xE0000000+4*n)))
+#define ITM_Port16(n)   (*((volatile unsigned short*)(0xE0000000+4*n)))
+#define ITM_Port32(n)   (*((volatile unsigned long *)(0xE0000000+4*n)))
+#define DEMCR           (*((volatile unsigned long *)(0xE000EDFC)))
+#define TRCENA          0x01000000
+#define VALVE_OFF        HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_SET)
+#define VALVE_ON        HAL_GPIO_WritePin(GPIOA,GPIO_PIN_11,GPIO_PIN_RESET)
+
+
+struct __FILE { int handle; /* Add whatever you need here */ };
+FILE __stdout;
+FILE __stdin;
+
+int fputc(int ch, FILE *f) {
+   if (DEMCR & TRCENA) {
+
+while (ITM_Port32(0) == 0);
+    ITM_Port8(0) = ch;
+  }
+  return(ch);
 }
+
+
+
+
+
+
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -118,13 +140,14 @@ int main(void)
   MX_TIM2_Init();
   MX_RTC_Init();
   MX_FATFS_Init();
-	
-	
+  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
 	 DWT_Init();
    init_max7219(14);
-	 timeToDigits(17,40,time);
+	 printf("Hello from MCU via SWO\n");
+
+	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
 	
 	 HAL_Delay(1000);
 	 displayNumberLow(100);

@@ -53,10 +53,6 @@ void max7219_clean() {
 	sendData(REG_DIGIT_1 | 0x00);
 	sendData(REG_DIGIT_2 | 0x00);
 	sendData(REG_DIGIT_3 | 0x00);
-	sendData(REG_DIGIT_4 | 0x00);
-	sendData(REG_DIGIT_5 | 0x00);
-	sendData(REG_DIGIT_6 | 0x00);
-	sendData(REG_DIGIT_7 | 0x00);
 }
 
 void sendData(uint16_t data) {
@@ -64,7 +60,7 @@ void sendData(uint16_t data) {
 	data_send[0]=data;
 	data_send[1] = (data >>8);
 	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_6, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&hspi1, (uint8_t *) data_send ,1, 10); //SPI_I2S_SendData(SPI1, data);
+	HAL_SPI_Transmit(&hspi1, data_send ,1, 10); //SPI_I2S_SendData(SPI1, data);
 //	while ();
 	 //  GPIO_ResetBits(GPIOA, GPIO_Pin_6);
 	// asm("nop");
