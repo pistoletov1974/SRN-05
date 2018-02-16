@@ -9,7 +9,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * Copyright (c) 2017 STMicroelectronics International N.V. 
+  * Copyright (c) 2018 STMicroelectronics International N.V. 
   * All rights reserved.
   *
   * Redistribution and use in source and binary forms, with or without 
@@ -67,6 +67,9 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 uint8_t time[4];
+uint8_t z_state=1;
+uint16_t coil_counter=0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -144,26 +147,32 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 	 DWT_Init();
+	 HAL_Delay(300);
    init_max7219(14);
 	 printf("Hello from MCU via SWO\n");
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
-	
-	 HAL_Delay(1000);
-	 displayNumberLow(100);
-	 HAL_Delay(1000);
-	 displayNumberLow(5);
-	 HAL_Delay(1000);
-	 displayNumberLow(777);
-	 HAL_Delay(1000);
-	 displayNumberLow(7077);
+	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 12);
+	 __HAL_TIM_SET_AUTORELOAD(&htim1, 12);
+	 HAL_TIM_Base_Start(&htim1);
+	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	 
+	
+	 HAL_Delay(100);
+	 displayNumberLow(100);
+	 HAL_Delay(100);
+	 displayNumberLow(5);
+	 HAL_Delay(100);
+	 displayNumberLow(777);
+	 HAL_Delay(100);
+	 displayNumberLow(7077);
+	 /*
 	 for (int i=0; i<9999; i++) {
 	 displayNumberLow(i);
 	 DWT_Delay(10000);	 
 	 displayNumberHigh(i); 
 	 }
-	 
+	 */
 	 
 	 
   /* USER CODE END 2 */
@@ -175,7 +184,13 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-
+      if (z_state==1) {
+			printf("c=%d\n", coil_counter);
+				displayNumberLow(coil_counter);
+				
+				z_state=0;
+				displayNumberHigh(__HAL_TIM_GetCounter(&htim1));
+			}
   }
   /* USER CODE END 3 */
 

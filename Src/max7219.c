@@ -82,7 +82,7 @@ uint16_t getSymbol(uint8_t number) {
 void displayNumberLow (uint16_t number) {
 	uint8_t dig1,dig2,dig3,dig4;
 	// значения разрядов входного числа  dig1...dig4
-	
+	number = number % 10000;
 	dig1 = number /1000;
 	dig2 = number /100 %10;
 	dig3 = number/10%10;
