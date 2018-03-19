@@ -140,11 +140,18 @@ int main(void)
 	 printf("Hello from MCU via SWO\n");
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
-	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 12);
-	 __HAL_TIM_SET_AUTORELOAD(&htim1, 12);
+	 // 18 equals 0.28 mm step tim1 use for dividing 
+	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 18);
+	 __HAL_TIM_SET_AUTORELOAD(&htim1, 18);
 	 HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	 
+	 // tim3 using for freq generation
+	 
+	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,50);
+	 __HAL_TIM_SetAutoreload(&htim3,100);
+	 HAL_TIM_Base_Start(&htim3);
+	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	
 	 HAL_Delay(100);
 	 displayNumberLow(100);

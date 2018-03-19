@@ -148,8 +148,7 @@ int main(void)
 	 
 	 // tim3 using for freq generation
 	 
-	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,500);
-	 __HAL_TIM_SetAutoreload(&htim3,1000);
+   _Set_Motor_freq(500);
 	 HAL_TIM_Base_Start(&htim3);
 	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	
@@ -174,17 +173,44 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	_Motor_Break_off();
+	_Motor_Start();
+
+	
   while (1)
   {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-      if (z_state==1) {
+       if (z_state==1) {
 			printf("c=%d\n", coil_counter);
 				displayNumberLow(coil_counter);
 				
 				z_state=0;
 				displayNumberHigh(__HAL_TIM_GetCounter(&htim1));
+				
+				// test for speed changes
+		
+		    if (coil_counter == 10) { 	_Set_Motor_freq(3000);}	
+				if (coil_counter == 120)
+					{ 	
+					_Set_Motor_freq(400);
+						printf("set speed 600");
+				}
+					
+						if (coil_counter == 160)
+					{ 	
+					_Set_Motor_freq(100);
+						printf("set speed 100");
+				}
+					
+				if (coil_counter==170 ) {
+					_Motor_Break();
+					_Motor_Start_off();
+				}
+				
+				
+				
 			}
   }
   /* USER CODE END 3 */

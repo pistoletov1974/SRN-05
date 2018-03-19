@@ -48,6 +48,14 @@
 
 /* USER CODE BEGIN Private defines */
 
+#define _Motor_Start()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
+#define _Motor_Start_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
+#define _Motor_Break_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+#define _Motor_Break()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+// set frequency from 25 to 5000 hZ
+#define _Set_Motor_freq(a) 	__HAL_TIM_SetAutoreload(&htim3,125000/(a));  __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,125000/(a*2)); 	 
+
+
 /* USER CODE END Private defines */
 
 void _Error_Handler(char *, int);
