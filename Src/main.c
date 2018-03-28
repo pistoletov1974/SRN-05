@@ -38,12 +38,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_hal.h"
+#include "dac.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+//#include "TM_stm32_hd44780.h"
 
 /* USER CODE BEGIN Includes */
 #include "max7219.h"
@@ -132,12 +134,17 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   MX_TIM3_Init();
+  MX_DAC_Init();
 
   /* USER CODE BEGIN 2 */
 	 DWT_Init();
 	 HAL_Delay(300);
    init_max7219(14);
 	 printf("Hello from MCU via SWO\n");
+	 AT_HD44780_Init(20, 4);
+	  AT_HD44780_Puts(0, 0, "привет Генославу");
+		AT_HD44780_Puts(2, 1, "20x4 HD44780 LCD");
+	 
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
 	 // 18 equals 0.28 mm step tim1 use for dividing 
