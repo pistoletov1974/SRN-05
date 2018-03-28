@@ -141,14 +141,16 @@ int main(void)
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
 	 // 18 equals 0.28 mm step tim1 use for dividing 
-	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 18);
-	 __HAL_TIM_SET_AUTORELOAD(&htim1, 18);
+	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 10);
+	 __HAL_TIM_SET_AUTORELOAD(&htim1, 10);
 	 HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	 
 	 // tim3 using for freq generation
 	 
    _Set_Motor_freq(500);
+	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
+	 __HAL_TIM_SetAutoreload(&htim3,250);
 	 HAL_TIM_Base_Start(&htim3);
 	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	
@@ -191,20 +193,27 @@ int main(void)
 				
 				// test for speed changes
 		
-		    if (coil_counter == 10) { 	_Set_Motor_freq(3000);}	
-				if (coil_counter == 120)
+		    if (coil_counter == 10) { 	
+				
+				_Set_Motor_freq(3000);
+				
+				
+					
+				}	
+	
+						if (coil_counter == 110)
 					{ 	
-					_Set_Motor_freq(400);
-						printf("set speed 600");
+					_Set_Motor_freq(1000);			
+
 				}
 					
-						if (coil_counter == 160)
+							if (coil_counter == 125)
 					{ 	
-					_Set_Motor_freq(100);
-						printf("set speed 100");
+					_Set_Motor_freq(500);			
+
 				}
 					
-				if (coil_counter==170 ) {
+				if (coil_counter==130 ) {
 					_Motor_Break();
 					_Motor_Start_off();
 				}
