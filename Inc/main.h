@@ -46,6 +46,10 @@
 
 /* Private define ------------------------------------------------------------*/
 
+#define Z_state_Pin GPIO_PIN_11
+#define Z_state_GPIO_Port GPIOF
+#define Z_state_EXTI_IRQn EXTI15_10_IRQn
+
 /* USER CODE BEGIN Private defines */
 
 #define _Motor_Start()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);

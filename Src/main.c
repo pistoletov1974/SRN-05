@@ -45,11 +45,11 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include "TM_stm32_hd44780.h"
 
 /* USER CODE BEGIN Includes */
 #include "max7219.h"
 #include "main.h"
+#include "TM_stm32_hd44780.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -58,6 +58,7 @@
 /* Private variables ---------------------------------------------------------*/
 uint8_t time[4];
 uint8_t z_state=1;
+uint8_t period_step=0;
 uint16_t coil_counter=0;
 float step;
 char buf[20];
@@ -137,6 +138,8 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM3_Init();
   MX_DAC_Init();
+  MX_TIM6_Init();
+  MX_TIM5_Init();
 
   /* USER CODE BEGIN 2 */
 	 DWT_Init();
@@ -179,6 +182,7 @@ int main(void)
 	 HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	 
+	 
 	 // tim3 using for freq generation
 	 
    _Set_Motor_freq(500);
@@ -211,7 +215,7 @@ int main(void)
 	_Motor_Break_off();
 	_Motor_Start();
 
-	
+	step=0;
   while (1)
   {
   /* USER CODE END WHILE */
@@ -254,7 +258,19 @@ int main(void)
 				
 				
 			}
-  }
+  
+	
+	if (period_step==1) {
+	    period_step=0;
+		  step = step+0.01;
+		 sprintf(buf,"%.2f",step);
+	 AT_HD44780_Puts(14,0,buf);
+	
+	}
+	
+	
+	
+	}
   /* USER CODE END 3 */
 
 }
