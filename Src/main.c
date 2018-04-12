@@ -45,7 +45,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-//#include "TM_stm32_hd44780.h"
+#include "TM_stm32_hd44780.h"
 
 /* USER CODE BEGIN Includes */
 #include "max7219.h"
@@ -59,6 +59,8 @@
 uint8_t time[4];
 uint8_t z_state=1;
 uint16_t coil_counter=0;
+float step;
+char buf[20];
 
 /* USER CODE END PV */
 
@@ -140,9 +142,33 @@ int main(void)
 	 DWT_Init();
 	 HAL_Delay(300);
    init_max7219(14);
+	 step=0.29;
 	 printf("Hello from MCU via SWO\n");
+	 AT_HD44780_CursorOn();
+	 AT_HD44780_BlinkOn();
 	 AT_HD44780_Init(20, 4);
-	  AT_HD44780_Puts(0, 0, "привет Генославу");
+	 AT_HD44780_Puts(0, 0, "Макс скорость: ");
+  
+   for (int i=0; i<100;i++) {
+	 step = step + 0.01;
+	 sprintf(buf,"%.2f",step);
+	 AT_HD44780_Puts(14,0,buf);
+		 HAL_Delay(10);
+	
+		
+	 }
+	 
+	 AT_HD44780_Puts(16, 0, "\xC8");
+	 HAL_Delay(2000);
+	AT_HD44780_PutCustom(19,1, 0xc8);
+	 HAL_Delay(2000);
+	
+	 AT_HD44780_Puts(19, 2, "C");
+	 HAL_Delay(2000);
+	 AT_HD44780_Puts(19, 3, "D");
+	 HAL_Delay(2000);
+	 
+	 
 		AT_HD44780_Puts(2, 1, "20x4 HD44780 LCD");
 	 
 
