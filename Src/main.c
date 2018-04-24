@@ -61,8 +61,11 @@ uint8_t z_state=1;
 uint8_t period_step_up=0;
 uint8_t period_step_down=0;
 uint16_t coil_counter=0;
+uint8_t  elapsed=0; 
 float step;
 char buf[20];
+uint32_t delay_counter;
+
 
 /* USER CODE END PV */
 
@@ -111,6 +114,28 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
    uint32_t data; 
+   uint8_t prev_state=0;
+   uint8_t pressed=0; 
+   uint8_t holded=0; 
+   typedef struct {
+   uint16_t  coil;
+   uint8_t   speed;
+   float     step;
+   float     length;        
+   }  program_t;    
+   program_t program;  
+
+
+   
+   typedef enum { 
+   IDLE=0x00,                      
+   SETUP,
+   RUN,
+   EMERGENCY    
+   } states;
+   states run_state;
+
+    
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -148,35 +173,36 @@ int main(void)
     HAL_Delay(300);
     init_max7219(14);
     step=0.29;
+    run_state=IDLE;
+    HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI2_IRQn);
     printf("Hello from MCU via SWO\n");
     AT_HD44780_CursorOn();
     AT_HD44780_BlinkOn();
     AT_HD44780_Init(20, 4);
-    AT_HD44780_Puts(0, 0, "Макс скорость: ");
-  
-   for (int i=0; i<100;i++) {
-    step = step + 0.01;
-    sprintf(buf,"%.2f",step);
-    AT_HD44780_Puts(14,0,buf);
-    HAL_Delay(10);
-
-	 AT_HD44780_Puts(16, 0, "\xC8");
-	 HAL_Delay(50);
-	AT_HD44780_PutCustom(19,1, 0xc8);
-	 HAL_Delay(50);
+    AT_HD44780_Puts(0, 0, "Кол. витков:  ");
+    AT_HD44780_Puts(0, 1, "Шаг:  ");
+    AT_HD44780_Puts(0, 2, "Длинна:  ");
+    AT_HD44780_Puts(0, 3, "Макс. скорость:  ");
+    
+    
+   
 	
-	 AT_HD44780_Puts(19, 2, "C");
-	 HAL_Delay(50);
-	 AT_HD44780_Puts(19, 3, "D");
-	 HAL_Delay(50);
+
+	//AT_HD44780_PutCustom(19,1, 0xc8);
+
+	
+
 	 
 	 
-		AT_HD44780_Puts(2, 1, "20x4 HD44780 LCD");
+		
 	 
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
+     
 	 // 18 equals 0.28 mm step tim1 use for dividing 
-	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
+	 //initialize divider for stepper 
+     __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
 	 __HAL_TIM_SET_AUTORELOAD(&htim1, 13);
 	 HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
@@ -184,27 +210,13 @@ int main(void)
 	 
 	 // tim3 using for freq generation for owen speed control
 	 
-   _Set_Motor_freq(500);
+     _Set_Motor_freq(500);
 	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	 __HAL_TIM_SetAutoreload(&htim3,250);
 	 HAL_TIM_Base_Start(&htim3);
 	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-	
-	 HAL_Delay(100);
-	 displayNumberLow(100);
-	 HAL_Delay(100);
-	 displayNumberLow(5);
-	 HAL_Delay(100);
-	 displayNumberLow(777);
-	 HAL_Delay(100);
-	 displayNumberLow(7077);
-	 /*
-	 for (int i=0; i<9999; i++) {
-	 displayNumberLow(i);
-	 DWT_Delay(10000);	 
-	 displayNumberHigh(i); 
-	 }
-	 */
+
+
 	 
 	 
   /* USER CODE END 2 */
@@ -220,6 +232,10 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+      
+      if (run_state==RUN)  {
+      
+      
        if (z_state==1) {
 			printf("c=%d\n", coil_counter);
 			displayNumberLow(coil_counter);
@@ -257,11 +273,19 @@ int main(void)
 				
 				
 			}
+       
+        }
   
-	
+	// setup mode
+            
+            
+            
+    if (run_state==SETUP) { 
+
+        
 	if (period_step_up==1) {
 	    period_step_up=0;
-        step = step+0.01;
+        step = step+1;
         data=__HAL_TIM_GetAutoreload(&htim5);
         if(data>50) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
@@ -273,7 +297,7 @@ int main(void)
     
 	if (period_step_down==1) {
 	    period_step_down=0;
-        step = step-0.01;
+        step = step-1;
         data=__HAL_TIM_GetAutoreload(&htim5);
          if(data>50) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
@@ -283,10 +307,50 @@ int main(void)
 	
 	}    
 	
-	
-	
-	}
 }
+   //	 butons pressed together
+   if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) &&  ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) )           
+        pressed=1;    
+           else pressed=0; 
+   
+   
+   
+   if ((pressed==1) && (prev_state==0) && run_state==IDLE)
+   {    
+           
+            //how much time buttons pressed?
+
+            delay_counter=0;  
+            holded=1;
+       } 
+   if ((pressed==0) && (holded==1)) holded=0;
+             // delay counter updates in the systick handler func
+       
+       
+                if ((delay_counter>2000)  && (holded==1))
+            {
+                
+                
+                  if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) ) 
+                      {
+                delay_counter=0;
+             
+                run_state=SETUP;
+    
+                AT_HD44780_PutCustom(19,0, 0xc8);
+                HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+                HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+                     }  
+            }
+
+
+       
+
+    prev_state=pressed;
+
+
+	}
+
   /* USER CODE END 3 */
 
 }
