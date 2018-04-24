@@ -58,7 +58,8 @@
 /* Private variables ---------------------------------------------------------*/
 uint8_t time[4];
 uint8_t z_state=1;
-uint8_t period_step=0;
+uint8_t period_step_up=0;
+uint8_t period_step_down=0;
 uint16_t coil_counter=0;
 float step;
 char buf[20];
@@ -88,12 +89,13 @@ FILE __stdout;
 FILE __stdin;
 
 int fputc(int ch, FILE *f) {
-   if (DEMCR & TRCENA) {
-
-while (ITM_Port32(0) == 0);
-    ITM_Port8(0) = ch;
-  }
+      if (DEMCR & TRCENA)
+				{
+        while (ITM_Port32(0) == 0);
+        ITM_Port8(0) = ch;
+        }
   return(ch);
+        
 }
 
 
@@ -108,7 +110,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+   uint32_t data; 
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -142,34 +144,31 @@ int main(void)
   MX_TIM5_Init();
 
   /* USER CODE BEGIN 2 */
-	 DWT_Init();
-	 HAL_Delay(300);
-   init_max7219(14);
-	 step=0.29;
-	 printf("Hello from MCU via SWO\n");
-	 AT_HD44780_CursorOn();
-	 AT_HD44780_BlinkOn();
-	 AT_HD44780_Init(20, 4);
-	 AT_HD44780_Puts(0, 0, "Макс скорость: ");
+    DWT_Init();
+    HAL_Delay(300);
+    init_max7219(14);
+    step=0.29;
+    printf("Hello from MCU via SWO\n");
+    AT_HD44780_CursorOn();
+    AT_HD44780_BlinkOn();
+    AT_HD44780_Init(20, 4);
+    AT_HD44780_Puts(0, 0, "Макс скорость: ");
   
    for (int i=0; i<100;i++) {
-	 step = step + 0.01;
-	 sprintf(buf,"%.2f",step);
-	 AT_HD44780_Puts(14,0,buf);
-		 HAL_Delay(10);
-	
-		
-	 }
-	 
+    step = step + 0.01;
+    sprintf(buf,"%.2f",step);
+    AT_HD44780_Puts(14,0,buf);
+    HAL_Delay(10);
+
 	 AT_HD44780_Puts(16, 0, "\xC8");
-	 HAL_Delay(2000);
+	 HAL_Delay(50);
 	AT_HD44780_PutCustom(19,1, 0xc8);
-	 HAL_Delay(2000);
+	 HAL_Delay(50);
 	
 	 AT_HD44780_Puts(19, 2, "C");
-	 HAL_Delay(2000);
+	 HAL_Delay(50);
 	 AT_HD44780_Puts(19, 3, "D");
-	 HAL_Delay(2000);
+	 HAL_Delay(50);
 	 
 	 
 		AT_HD44780_Puts(2, 1, "20x4 HD44780 LCD");
@@ -177,13 +176,13 @@ int main(void)
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
 	 // 18 equals 0.28 mm step tim1 use for dividing 
-	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 10);
-	 __HAL_TIM_SET_AUTORELOAD(&htim1, 10);
+	 __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
+	 __HAL_TIM_SET_AUTORELOAD(&htim1, 13);
 	 HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	 
 	 
-	 // tim3 using for freq generation
+	 // tim3 using for freq generation for owen speed control
 	 
    _Set_Motor_freq(500);
 	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
@@ -223,34 +222,34 @@ int main(void)
   /* USER CODE BEGIN 3 */
        if (z_state==1) {
 			printf("c=%d\n", coil_counter);
-				displayNumberLow(coil_counter);
-				
-				z_state=0;
-				displayNumberHigh(__HAL_TIM_GetCounter(&htim1));
-				
-				// test for speed changes
-		
-		    if (coil_counter == 10) { 	
-				
-				_Set_Motor_freq(3000);
-				
-				
-					
+			displayNumberLow(coil_counter);
+			z_state=0;
+			displayNumberHigh(__HAL_TIM_GetCounter(&htim1));
+			// test for speed changes
+		    if (coil_counter == 5)
+                { 	
+			_Set_Motor_freq(4000);
 				}	
 	
-						if (coil_counter == 110)
+						if (coil_counter == 145)
 					{ 	
 					_Set_Motor_freq(1000);			
 
 				}
 					
-							if (coil_counter == 125)
+							if (coil_counter == 155)
 					{ 	
 					_Set_Motor_freq(500);			
 
 				}
 					
-				if (coil_counter==130 ) {
+								if (coil_counter == 157)
+					{ 	
+					_Set_Motor_freq(300);			
+
+				}
+					
+				if (coil_counter==162 ) {
 					_Motor_Break();
 					_Motor_Start_off();
 				}
@@ -260,17 +259,34 @@ int main(void)
 			}
   
 	
-	if (period_step==1) {
-	    period_step=0;
-		  step = step+0.01;
-		 sprintf(buf,"%.2f",step);
-	 AT_HD44780_Puts(14,0,buf);
+	if (period_step_up==1) {
+	    period_step_up=0;
+        step = step+0.01;
+        data=__HAL_TIM_GetAutoreload(&htim5);
+        if(data>50) data=data-10;
+        __HAL_TIM_SetAutoreload(&htim5,data);
+		sprintf(buf,"%.2f",step);
+        AT_HD44780_Puts(14,0,"     ");
+	    AT_HD44780_Puts(14,0,buf);
 	
 	}
+    
+	if (period_step_down==1) {
+	    period_step_down=0;
+        step = step-0.01;
+        data=__HAL_TIM_GetAutoreload(&htim5);
+         if(data>50) data=data-10;
+        __HAL_TIM_SetAutoreload(&htim5,data);
+		sprintf(buf,"%.2f",step);
+        AT_HD44780_Puts(14,0,"     ");
+	    AT_HD44780_Puts(14,0,buf);
+	
+	}    
 	
 	
 	
 	}
+}
   /* USER CODE END 3 */
 
 }
