@@ -57,10 +57,11 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 uint8_t time[4];
-uint8_t z_state=1;
+uint8_t z_state=0;
 uint8_t period_step_up=0;
 uint8_t period_step_down=0;
 uint16_t coil_counter=0;
+uint8_t  active_line=0;
 uint8_t  elapsed=0; 
 float step;
 char buf[20];
@@ -116,14 +117,23 @@ int main(void)
    uint32_t data; 
    uint8_t prev_state=0;
    uint8_t pressed=0; 
+   uint8_t pressed_up=0;
+   uint8_t pressed_down=0;   
+   uint8_t pressed_up_prev=0;
+   uint8_t pressed_down_prev=0;     
    uint8_t holded=0; 
+   uint8_t holded_up=0;
+   uint8_t holded_down=0;
+   uint8_t done=0;
    typedef struct {
    uint16_t  coil;
    uint8_t   speed;
    float     step;
    float     length;        
    }  program_t;    
-   program_t program;  
+   program_t program; 
+   program_t program_max;
+   program_t program_min;   
 
 
    
@@ -184,7 +194,16 @@ int main(void)
     AT_HD44780_Puts(0, 1, "Шаг:  ");
     AT_HD44780_Puts(0, 2, "Длинна:  ");
     AT_HD44780_Puts(0, 3, "Макс. скорость:  ");
+    // setup max & min values of programm
+    program_max.coil = 9999;
+    program_min.coil =1;
+    program_max.speed=100;
+    program_min.speed=1;
+    program_max.step=1;
+    program_min.step=0.01;
     
+    program.coil=0;
+    program.step=0;
     
    
 	
@@ -232,7 +251,7 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-      
+      //run mode
       if (run_state==RUN)  {
       
       
@@ -274,48 +293,125 @@ int main(void)
 				
 			}
        
-        }
+        }   // end run mode
   
+       
+        
 	// setup mode
             
             
             
     if (run_state==SETUP) { 
 
+    
+    // down button
+    if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) 
+    {
+        pressed_down=1;
+   
+    }   else pressed_down=0;
+    
+        
+    if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && (pressed_down_prev==0))   
+    {
+            // button presed start counters 
+            delay_counter=0;
+            holded_down=1;
+            done=0;
+    }
+    // check holded key
+    if ((pressed_down==0)&&(holded_down==1) ) holded_down=0;
+    //check short press
+    if ((delay_counter>10)&&(holded_down==1) && (done==0)) 
+    {
+        if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET)
+            {
+        AT_HD44780_PutCustom(19,active_line,' ');
+        active_line=(active_line<3)?active_line+1:0;
+        AT_HD44780_PutCustom(19,active_line, 0xc8);
+        done=1;    
+           } 
+    }
+    //check long press
+    
+        if ( (delay_counter>1000) && (holded_down==1)&&(done==1) )
+    {  
+        AT_HD44780_PutCustom(19,active_line,0x20);
+        run_state=IDLE;
+    }
+    
+    pressed_down_prev=pressed_down;
+   // down buttons end 
+
+
+
+
+
+
+
+    
         
 	if (period_step_up==1) {
+        
 	    period_step_up=0;
-        step = step+1;
+    switch (active_line)
+    {
+        case 0:
+            program.coil= (program.coil<program_max.coil)?program.coil+1:program.coil;
+            sprintf(buf,"%d",program.coil);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);
+        break;
+        case 1:
+            program.step= (program.step<program_max.step)?program.step+0.01:program.step;
+            sprintf(buf,"%.2f",program.step);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);
+        break;
+     }//switch         
+        //speed up timer 
         data=__HAL_TIM_GetAutoreload(&htim5);
-        if(data>50) data=data-10;
+        if(data>30) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
-		sprintf(buf,"%.2f",step);
-        AT_HD44780_Puts(14,0,"     ");
-	    AT_HD44780_Puts(14,0,buf);
-	
-	}
+		
+	} // if step_up
     
 	if (period_step_down==1) {
 	    period_step_down=0;
-        step = step-1;
+            switch (active_line)
+    {
+        case 0:
+            program.coil= (program.coil>program_min.coil)?program.coil-1:program.coil;
+            sprintf(buf,"%d",program.coil);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);
+        break;
+        case 1:
+            program.step= (program.step>program_min.step)?program.step-0.01:program.step;
+            sprintf(buf,"%.2f",program.step);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);
+        break;
+     }//switch   
+        //speed up timer
         data=__HAL_TIM_GetAutoreload(&htim5);
-         if(data>50) data=data-10;
+        if(data>30) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
-		sprintf(buf,"%.2f",step);
-        AT_HD44780_Puts(14,0,"     ");
-	    AT_HD44780_Puts(14,0,buf);
+
 	
 	}    
 	
-}
-   //	 butons pressed together
+}  // end setup mode
+   
+ if (run_state==IDLE)  {
+//	 butons pressed together
    if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) &&  ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) )           
         pressed=1;    
            else pressed=0; 
    
    
    
-   if ((pressed==1) && (prev_state==0) && run_state==IDLE)
+   if ((pressed==1) && (prev_state==0) )
    {    
            
             //how much time buttons pressed?
@@ -334,12 +430,14 @@ int main(void)
                   if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) ) 
                       {
                 delay_counter=0;
-             
+                pressed_down_prev=1;
+                pressed_up_prev=1;          
                 run_state=SETUP;
-    
-                AT_HD44780_PutCustom(19,0, 0xc8);
+                active_line=0;
+                AT_HD44780_PutCustom(19,active_line, 0xc8);
                 HAL_NVIC_EnableIRQ(EXTI1_IRQn);
                 HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+                holded=0;
                      }  
             }
 
@@ -348,7 +446,7 @@ int main(void)
 
     prev_state=pressed;
 
-
+        }      // end idle mode
 	}
 
   /* USER CODE END 3 */
