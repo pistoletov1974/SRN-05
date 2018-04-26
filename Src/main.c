@@ -199,7 +199,7 @@ int main(void)
     program_min.coil =1;
     program_max.speed=100;
     program_min.speed=1;
-    program_max.step=1;
+    program_max.step=0.99;
     program_min.step=0.01;
     
     program.coil=0;
@@ -338,6 +338,7 @@ int main(void)
     {  
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
+        displayNumberHigh(program.coil);
     }
     
     pressed_down_prev=pressed_down;
