@@ -75,7 +75,8 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-
+ int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset );
+ int8_t read_from_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset );
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -218,7 +219,11 @@ int main(void)
 	 
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
-     
+     read_from_backup_sram((uint8_t*)&program, sizeof(program),0x01 );
+     sprintf(buf,"%d",program.coil);
+     AT_HD44780_Puts(14,0,buf);
+     sprintf(buf,"%.2f",program.step);
+     AT_HD44780_Puts(14,1,buf);
 	 // 18 equals 0.28 mm step tim1 use for dividing 
 	 //initialize divider for stepper 
      __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
@@ -234,8 +239,8 @@ int main(void)
 	 __HAL_TIM_SetAutoreload(&htim3,250);
 	 HAL_TIM_Base_Start(&htim3);
 	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-
-
+     //tetst blue led toggle
+     //HAL_TIM_Base_Start_IT(&htim6);
 	 
 	 
   /* USER CODE END 2 */
@@ -336,6 +341,7 @@ int main(void)
     
         if ( (delay_counter>1000) && (holded_down==1)&&(done==1) )
     {  
+        write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
         _RED_LED_OFF();
@@ -522,6 +528,50 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
+  const uint16_t backup_size = 0x1000;
+  uint8_t* base_addr = (uint8_t *) BKPSRAM_BASE;
+  uint16_t i;
+  if( bytes + offset >= backup_size ) {
+    /* ERROR : the last byte is outside the backup SRAM region */
+    return -1;
+  }
+ 
+  /* disable backup domain write protection */
+
+  /** enable the backup regulator (used to maintain the backup SRAM content in
+    * standby and Vbat modes).  NOTE : this bit is not reset when the device
+    * wakes up from standby, system reset or power reset. You can check that
+    * the backup regulator is ready on PWR->CSR.brr, see rm p144 */
+
+  HAL_PWREx_EnableBkUpReg();
+  for( i = 0; i < bytes; i++ ) {
+    *(base_addr + offset + i) = *(data + i);
+  }
+  HAL_PWREx_DisableBkUpReg(); // reset PWR->CR.dbp = 0;
+  return 0;
+}
+
+
+
+int8_t read_from_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
+  const uint16_t backup_size = 0x1000;
+  uint8_t* base_addr = (uint8_t *) BKPSRAM_BASE;
+  uint16_t i;
+  if( bytes + offset >= backup_size ) {
+    /* ERROR : the last byte is outside the backup SRAM region */
+    return -1;
+  }
+ 
+  for( i = 0; i < bytes; i++ ) {
+    *(data + i) = *(base_addr + offset + i);
+  }
+  return 0;
+}
+
+
 
 /* USER CODE END 4 */
 

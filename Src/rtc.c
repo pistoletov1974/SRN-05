@@ -105,7 +105,9 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
     /* Peripheral clock enable */
     __HAL_RCC_RTC_ENABLE();
   /* USER CODE BEGIN RTC_MspInit 1 */
-
+   __HAL_RCC_BKPSRAM_CLK_ENABLE(); // additional code for Backup RAM enable
+   HAL_PWR_EnableBkUpAccess(); // additional code for Backup RAM enable
+    // additional code for Backup RAM enable
   /* USER CODE END RTC_MspInit 1 */
   }
 }
