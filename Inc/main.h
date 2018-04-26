@@ -52,10 +52,20 @@
 
 /* USER CODE BEGIN Private defines */
 
-#define _Motor_Start()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
+#define _Motor_Start()       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
 #define _Motor_Start_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
 #define _Motor_Break_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
-#define _Motor_Break()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+#define _Motor_Break()       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+//red
+#define _RED_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
+#define _RED_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+//green
+#define _BLUE_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
+#define _BLUE_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+//blue
+#define _GREEN_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+#define _GREEN_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+
 // set frequency from 25 to 5000 hZ
 #define _Set_Motor_freq(a) 	__HAL_TIM_SET_PRESCALER(&htim3, 50000/a);  //__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,125000/(a*2)); 	 
 

@@ -303,7 +303,7 @@ int main(void)
             
     if (run_state==SETUP) { 
 
-    
+    _RED_LED_ON();
     // down button
     if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) 
     {
@@ -338,6 +338,7 @@ int main(void)
     {  
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
+        _RED_LED_OFF();
         displayNumberHigh(program.coil);
     }
     
@@ -364,7 +365,7 @@ int main(void)
 	        AT_HD44780_Puts(14,active_line,buf);
         break;
         case 1:
-            program.step= (program.step<program_max.step)?program.step+0.01:program.step;
+            program.step= (program.step<program_max.step)?program.step+(float)0.01:program.step;
             sprintf(buf,"%.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
@@ -388,7 +389,7 @@ int main(void)
 	        AT_HD44780_Puts(14,active_line,buf);
         break;
         case 1:
-            program.step= (program.step>program_min.step)?program.step-0.01:program.step;
+            program.step= (program.step>program_min.step)?program.step-(float)0.01:program.step;
             sprintf(buf,"%.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
@@ -406,6 +407,7 @@ int main(void)
    
  if (run_state==IDLE)  {
 //	 butons pressed together
+     _GREEN_LED_ON();
    if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) &&  ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) )           
         pressed=1;    
            else pressed=0; 
@@ -434,6 +436,7 @@ int main(void)
                 pressed_down_prev=1;
                 pressed_up_prev=1;          
                 run_state=SETUP;
+                _GREEN_LED_OFF();
                 active_line=0;
                 AT_HD44780_PutCustom(19,active_line, 0xc8);
                 HAL_NVIC_EnableIRQ(EXTI1_IRQn);
