@@ -191,10 +191,10 @@ int main(void)
     AT_HD44780_CursorOn();
     AT_HD44780_BlinkOn();
     AT_HD44780_Init(20, 4);
-    AT_HD44780_Puts(0, 0, "Кол. витков:  ");
-    AT_HD44780_Puts(0, 1, "Шаг:  ");
-    AT_HD44780_Puts(0, 2, "Длинна:  ");
-    AT_HD44780_Puts(0, 3, "Макс. скорость:  ");
+    AT_HD44780_Puts(0, 0, "Кол. витков  ");
+    AT_HD44780_Puts(0, 1, "Шаг  ");
+    AT_HD44780_Puts(0, 2, "Длинна  ");
+    AT_HD44780_Puts(0, 3, "Макс. скорость  ");
     // setup max & min values of programm
     program_max.coil = 9999;
     program_min.coil =1;
@@ -550,7 +550,7 @@ int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
   for( i = 0; i < bytes; i++ ) {
     *(base_addr + offset + i) = *(data + i);
   }
-  HAL_PWREx_DisableBkUpReg(); // reset PWR->CR.dbp = 0;
+  //HAL_PWREx_DisableBkUpReg(); // reset PWR->CR.dbp = 0;
   return 0;
 }
 
