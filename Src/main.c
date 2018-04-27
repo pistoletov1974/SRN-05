@@ -129,6 +129,7 @@ int main(void)
    typedef struct {
    uint16_t  coil;
    uint8_t   speed;
+   uint8_t   divider;
    float     step;
    float     length;        
    }  program_t;    
@@ -194,7 +195,7 @@ int main(void)
     AT_HD44780_Puts(0, 0, "Кол. витков  ");
     AT_HD44780_Puts(0, 1, "Шаг  ");
     AT_HD44780_Puts(0, 2, "Длинна  ");
-    AT_HD44780_Puts(0, 3, "Макс. скорость  ");
+    AT_HD44780_Puts(0, 3, "Cкорость  ");
     // setup max & min values of programm
     program_max.coil = 9999;
     program_min.coil =1;
@@ -219,11 +220,17 @@ int main(void)
 	 
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
+     //initialize settings from sram memory
      read_from_backup_sram((uint8_t*)&program, sizeof(program),0x01 );
      sprintf(buf,"%d",program.coil);
      AT_HD44780_Puts(14,0,buf);
      sprintf(buf,"%.2f",program.step);
      AT_HD44780_Puts(14,1,buf);
+     sprintf(buf,"%.2f",program.length);
+     AT_HD44780_Puts(14,2,buf);     
+     sprintf(buf,"%d",program.speed);
+     AT_HD44780_Puts(15,3,buf);
+     
 	 // 18 equals 0.28 mm step tim1 use for dividing 
 	 //initialize divider for stepper 
      __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
@@ -256,7 +263,8 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-      //run mode
+      //run mode  
+
       if (run_state==RUN)  {
       
       
@@ -303,9 +311,7 @@ int main(void)
        
         
 	// setup mode
-            
-            
-            
+  
     if (run_state==SETUP) { 
 
     _RED_LED_ON();
@@ -333,6 +339,7 @@ int main(void)
             {
         AT_HD44780_PutCustom(19,active_line,' ');
         active_line=(active_line<3)?active_line+1:0;
+        if (active_line==2) active_line++;        
         AT_HD44780_PutCustom(19,active_line, 0xc8);
         done=1;    
            } 
@@ -341,11 +348,13 @@ int main(void)
     
         if ( (delay_counter>1000) && (holded_down==1)&&(done==1) )
     {  
+        program.divider= (uint8_t) (5/program.step);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
+        displayNumberLow(program.divider);
     }
     
     pressed_down_prev=pressed_down;
@@ -369,13 +378,41 @@ int main(void)
             sprintf(buf,"%d",program.coil);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
+            program.length=program.coil*program.step;
+            sprintf(buf,"%.2f",program.length);
+            AT_HD44780_Puts(14,2,"     ");
+            AT_HD44780_Puts(14,2,buf);
+            
         break;
         case 1:
             program.step= (program.step<program_max.step)?program.step+(float)0.01:program.step;
             sprintf(buf,"%.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
+            program_max.speed = (uint8_t) (26.8/program.step);
+            if (program.speed>=program_max.speed) 
+                {
+                    program.speed=program_max.speed;
+                    sprintf(buf,"%d",program.speed);
+                    AT_HD44780_Puts(15,3,"     ");
+	                AT_HD44780_Puts(15,3,buf);
+                
+                }
+            program.length=program.coil*program.step;
+            sprintf(buf,"%.2f",program.length);
+            AT_HD44780_Puts(14,2,"     ");
+            AT_HD44780_Puts(14,2,buf);                
+            
         break;
+        case 3:  
+            program.speed = (program.speed<program_max.speed)?program.speed+1:program.speed;
+            sprintf(buf,"%d",program.speed);
+            AT_HD44780_Puts(15,active_line,"     ");
+	        AT_HD44780_Puts(15,active_line,buf);            
+        break;
+
+
+                
      }//switch         
         //speed up timer 
         data=__HAL_TIM_GetAutoreload(&htim5);
@@ -393,13 +430,37 @@ int main(void)
             sprintf(buf,"%d",program.coil);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
+            program.length=program.coil*program.step;
+            sprintf(buf,"%.2f",program.length);
+            AT_HD44780_Puts(14,2,"     ");
+            AT_HD44780_Puts(14,2,buf);        
         break;
         case 1:
             program.step= (program.step>program_min.step)?program.step-(float)0.01:program.step;
             sprintf(buf,"%.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
+                        program_max.speed = (uint8_t) (26.8/program.step);
+            if (program.speed>=program_max.speed) 
+                {
+                    program.speed=program_max.speed;
+                    sprintf(buf,"%d",program.speed);
+                    AT_HD44780_Puts(15,3,"     ");
+	                AT_HD44780_Puts(15,3,buf);
+                
+                }
+            program.length=program.coil*program.step;
+            sprintf(buf,"%.2f",program.length);
+            AT_HD44780_Puts(14,2,"     ");
+            AT_HD44780_Puts(14,2,buf);                
         break;
+        case 3:  
+            program.speed = (program.speed>program_min.speed)?program.speed-1:program.speed;
+            sprintf(buf,"%d",program.speed);
+            AT_HD44780_Puts(15,active_line,"     ");
+	        AT_HD44780_Puts(15,active_line,buf); 
+        break;
+        
      }//switch   
         //speed up timer
         data=__HAL_TIM_GetAutoreload(&htim5);
@@ -411,7 +472,9 @@ int main(void)
 	
 }  // end setup mode
    
- if (run_state==IDLE)  {
+    // idle mode 
+
+if (run_state==IDLE)  {
 //	 butons pressed together
      _GREEN_LED_ON();
    if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) &&  ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) )           
