@@ -77,6 +77,7 @@ void SystemClock_Config(void);
 /* Private function prototypes -----------------------------------------------*/
  int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset );
  int8_t read_from_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset );
+ uint8_t Crc8(uint8_t *pcBlock, uint8_t len);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -126,9 +127,11 @@ int main(void)
    uint8_t holded_up=0;
    uint8_t holded_down=0;
    uint8_t done=0;
+   uint8_t crc, crc2;
+   
    typedef struct {
    uint16_t  coil;
-   uint8_t   speed;
+   uint16_t   speed;
    uint8_t   divider;
    float     step;
    float     length;        
@@ -197,12 +200,12 @@ int main(void)
     AT_HD44780_Puts(0, 2, "Длинна  ");
     AT_HD44780_Puts(0, 3, "Cкорость  ");
     // setup max & min values of programm
-    program_max.coil = 9999;
+    program_max.coil = 9999;                          
     program_min.coil =1;
-    program_max.speed=100;
+    program_max.speed=99;
     program_min.speed=1;
     program_max.step=0.99;
-    program_min.step=0.01;
+    program_min.step=0.02;
     
     program.coil=0;
     program.step=0;
@@ -221,15 +224,25 @@ int main(void)
 
 	 printf("%d %d %d\n", SystemCoreClock,HAL_RCC_GetPCLK1Freq(),HAL_RCC_GetPCLK2Freq());
      //initialize settings from sram memory
-     read_from_backup_sram((uint8_t*)&program, sizeof(program),0x01 );
-     sprintf(buf,"%d",program.coil);
+     crc=read_from_backup_sram((uint8_t*)&program, sizeof(program),0x01 );
+     printf("%04x",crc);
+     crc2=Crc8((uint8_t*)&program,sizeof(program));
+     printf("%04x",crc2);
+     if (crc!=crc2) 
+      { program.step=0.2;
+        program.coil=150;
+        program.length=30;
+        program.speed=50;
+        program.divider=25;
+      }
+     sprintf(buf,"%5d",program.coil);
      AT_HD44780_Puts(14,0,buf);
-     sprintf(buf,"%.2f",program.step);
+     sprintf(buf,"%5.2f",program.step);
      AT_HD44780_Puts(14,1,buf);
-     sprintf(buf,"%.2f",program.length);
+     sprintf(buf,"%5.2f",program.length);
      AT_HD44780_Puts(14,2,buf);     
-     sprintf(buf,"%d",program.speed);
-     AT_HD44780_Puts(15,3,buf);
+     sprintf(buf,"%5d",program.speed);
+     AT_HD44780_Puts(14,3,buf);
      
 	 // 18 equals 0.28 mm step tim1 use for dividing 
 	 //initialize divider for stepper 
@@ -375,42 +388,43 @@ int main(void)
     {
         case 0:
             program.coil= (program.coil<program_max.coil)?program.coil+1:program.coil;
-            sprintf(buf,"%d",program.coil);
+            sprintf(buf,"%5d",program.coil);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
             program.length=program.coil*program.step;
-            sprintf(buf,"%.2f",program.length);
-            AT_HD44780_Puts(14,2,"     ");
-            AT_HD44780_Puts(14,2,buf);
+            sprintf(buf,"%6.2f",program.length);
+            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,buf);
             
         break;
         case 1:
             program.step= (program.step<program_max.step)?program.step+(float)0.01:program.step;
-            sprintf(buf,"%.2f",program.step);
+            sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-            program_max.speed = (uint8_t) (26.8/program.step);
+            program_max.speed = (uint16_t) (26.8/program.step);
+            program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
                     program.speed=program_max.speed;
-                    sprintf(buf,"%d",program.speed);
-                    AT_HD44780_Puts(15,3,"     ");
-	                AT_HD44780_Puts(15,3,buf);
+                    sprintf(buf,"%5d",program.speed);
+                    AT_HD44780_Puts(14,3,"     ");
+	                AT_HD44780_Puts(14,3,buf);
                 
                 }
             program.length=program.coil*program.step;
-            sprintf(buf,"%.2f",program.length);
-            AT_HD44780_Puts(14,2,"     ");
-            AT_HD44780_Puts(14,2,buf);                
+            sprintf(buf,"%6.2f",program.length);
+            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,buf);                
             
         break;
         case 3:  
-            program.speed = (program.speed<program_max.speed)?program.speed+1:program.speed;
-            sprintf(buf,"%d",program.speed);
-            AT_HD44780_Puts(15,active_line,"     ");
-	        AT_HD44780_Puts(15,active_line,buf);            
+            program.speed = (program.speed<=program_max.speed)?program.speed+1:program.speed;
+            sprintf(buf,"%5d",program.speed);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);            
         break;
-
+        default: break;
 
                 
      }//switch         
@@ -427,39 +441,41 @@ int main(void)
     {
         case 0:
             program.coil= (program.coil>program_min.coil)?program.coil-1:program.coil;
-            sprintf(buf,"%d",program.coil);
+            sprintf(buf,"%5d",program.coil);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
             program.length=program.coil*program.step;
-            sprintf(buf,"%.2f",program.length);
-            AT_HD44780_Puts(14,2,"     ");
-            AT_HD44780_Puts(14,2,buf);        
+            sprintf(buf,"%6.2f",program.length);
+            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,buf);        
         break;
         case 1:
             program.step= (program.step>program_min.step)?program.step-(float)0.01:program.step;
-            sprintf(buf,"%.2f",program.step);
+            sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-                        program_max.speed = (uint8_t) (26.8/program.step);
+            program_max.speed = (uint16_t) (26.8/program.step);
+            program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
                     program.speed=program_max.speed;
-                    sprintf(buf,"%d",program.speed);
-                    AT_HD44780_Puts(15,3,"     ");
-	                AT_HD44780_Puts(15,3,buf);
+                    sprintf(buf,"%5d",program.speed);
+                    AT_HD44780_Puts(14,3,"     ");
+	                AT_HD44780_Puts(14,3,buf);
                 
                 }
             program.length=program.coil*program.step;
-            sprintf(buf,"%.2f",program.length);
-            AT_HD44780_Puts(14,2,"     ");
-            AT_HD44780_Puts(14,2,buf);                
+            sprintf(buf,"%6.2f",program.length);
+            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,buf);                
         break;
         case 3:  
             program.speed = (program.speed>program_min.speed)?program.speed-1:program.speed;
-            sprintf(buf,"%d",program.speed);
-            AT_HD44780_Puts(15,active_line,"     ");
-	        AT_HD44780_Puts(15,active_line,buf); 
+            sprintf(buf,"%5d",program.speed);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf); 
         break;
+        default:break;
         
      }//switch   
         //speed up timer
@@ -495,7 +511,7 @@ if (run_state==IDLE)  {
              // delay counter updates in the systick handler func
        
        
-                if ((delay_counter>2000)  && (holded==1))
+                if ((delay_counter>1000)  && (holded==1))
             {
                 
                 
@@ -597,6 +613,7 @@ int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
   const uint16_t backup_size = 0x1000;
   uint8_t* base_addr = (uint8_t *) BKPSRAM_BASE;
   uint16_t i;
+  uint8_t crc; 
   if( bytes + offset >= backup_size ) {
     /* ERROR : the last byte is outside the backup SRAM region */
     return -1;
@@ -609,12 +626,15 @@ int8_t write_to_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
     * wakes up from standby, system reset or power reset. You can check that
     * the backup regulator is ready on PWR->CSR.brr, see rm p144 */
 
-  HAL_PWREx_EnableBkUpReg();
+
   for( i = 0; i < bytes; i++ ) {
     *(base_addr + offset + i) = *(data + i);
   }
+  i++;
+  crc =  Crc8(data, bytes);
+   *(base_addr + offset + i) =  crc;
   //HAL_PWREx_DisableBkUpReg(); // reset PWR->CR.dbp = 0;
-  return 0;
+  return crc;
 }
 
 
@@ -623,6 +643,10 @@ int8_t read_from_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
   const uint16_t backup_size = 0x1000;
   uint8_t* base_addr = (uint8_t *) BKPSRAM_BASE;
   uint16_t i;
+  uint8_t crc;
+  uint8_t crc_sram;    
+    
+   
   if( bytes + offset >= backup_size ) {
     /* ERROR : the last byte is outside the backup SRAM region */
     return -1;
@@ -631,8 +655,44 @@ int8_t read_from_backup_sram( uint8_t *data, uint16_t bytes, uint16_t offset ) {
   for( i = 0; i < bytes; i++ ) {
     *(data + i) = *(base_addr + offset + i);
   }
-  return 0;
+  i++;
+  crc_sram =  *(base_addr + offset + i);
+  crc= Crc8(data, bytes);
+  
+  return crc_sram;
 }
+
+
+
+
+
+
+/*
+  Name  : CRC-8
+  Poly  : 0x31    x^8 + x^5 + x^4 + 1
+  Init  : 0xFF
+  Revert: false
+  XorOut: 0x00
+  Check : 0xF7 ("123456789")
+  MaxLen: 15 байт(127 бит) - обнаружение
+    одинарных, двойных, тройных и всех нечетных ошибок
+*/
+uint8_t Crc8(uint8_t *pcBlock, uint8_t len)
+{
+    uint8_t crc = 0xFF;
+    uint8_t i;
+
+    while (len--)
+    {
+        crc ^= *pcBlock++;
+
+        for (i = 0; i < 8; i++)
+            crc = crc & 0x80 ? (crc << 1) ^ 0x31 : crc << 1;
+    }
+
+    return crc;
+}
+
 
 
 

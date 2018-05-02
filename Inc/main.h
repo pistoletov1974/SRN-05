@@ -60,11 +60,18 @@
 #define _RED_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
 #define _RED_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
 //green
-#define _BLUE_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
-#define _BLUE_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+#define _BLUE_LED_ON()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
+#define _BLUE_LED_OFF()      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
 //blue
-#define _GREEN_LED_ON()        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
-#define _GREEN_LED_OFF()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+#define _GREEN_LED_ON()      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+#define _GREEN_LED_OFF()     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+// stepper enable
+#define _STEPPER_ENABLE()    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET); 
+#define _STEPPER_DISABLE()   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET); 
+//stepper direction
+#define _STEPPER_RIGHT()     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+#define _STEPPER_LEFT()      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+
 
 // set frequency from 25 to 5000 hZ
 #define _Set_Motor_freq(a) 	__HAL_TIM_SET_PRESCALER(&htim3, 50000/a);  //__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,125000/(a*2)); 	 
