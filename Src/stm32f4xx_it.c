@@ -46,6 +46,7 @@ extern TIM_HandleTypeDef htim5;
 extern TIM_HandleTypeDef htim6;
 extern UART_HandleTypeDef huart1;
 extern uint32_t delay_counter;
+extern uint32_t delay_counter_setup;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -173,7 +174,8 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-   delay_counter++;
+   delay_counter++;   
+   delay_counter_setup++; 
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   HAL_SYSTICK_IRQHandler();

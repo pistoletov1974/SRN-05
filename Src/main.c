@@ -66,6 +66,7 @@ uint8_t  elapsed=0;
 float step;
 char buf[20];
 uint32_t delay_counter;
+uint32_t delay_counter_setup;
 
 
 /* USER CODE END PV */
@@ -126,8 +127,15 @@ int main(void)
    uint8_t holded=0; 
    uint8_t holded_up=0;
    uint8_t holded_down=0;
-   uint8_t done=0;
+   uint8_t presed_start_r=0;
+   uint8_t presed_start_l=0;
+   uint8_t holded_start_r=0;
+   uint8_t holded_start_l=0;
+   uint8_t presed_start_r_prev=0;
+   uint8_t presed_start_l_prev=0;    
+   uint8_t done=0,up=0;
    uint8_t crc, crc2;
+   uint32_t speed;
    
    typedef struct {
    uint16_t  coil;
@@ -148,7 +156,7 @@ int main(void)
    RUN,
    EMERGENCY    
    } states;
-   states run_state;
+   states run_state, run_state_prev;
 
     
   /* USER CODE END 1 */
@@ -243,22 +251,17 @@ int main(void)
      AT_HD44780_Puts(14,2,buf);     
      sprintf(buf,"%5d",program.speed);
      AT_HD44780_Puts(14,3,buf);
-     
+     run_state=IDLE;
+     run_state_prev=IDLE; 
+      
+      
 	 // 18 equals 0.28 mm step tim1 use for dividing 
 	 //initialize divider for stepper 
-     __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1, 13);
-	 __HAL_TIM_SET_AUTORELOAD(&htim1, 13);
-	 HAL_TIM_Base_Start(&htim1);
-	 HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+
 	 
 	 
 	 // tim3 using for freq generation for owen speed control
-	 
-     _Set_Motor_freq(500);
-	 __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
-	 __HAL_TIM_SetAutoreload(&htim3,250);
-	 HAL_TIM_Base_Start(&htim3);
-	 HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+
      //tetst blue led toggle
      //HAL_TIM_Base_Start_IT(&htim6);
 	 
@@ -267,67 +270,20 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	_Motor_Break_off();
-	_Motor_Start();
 
-	step=0;
   while (1)
   {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-      //run mode  
-
-      if (run_state==RUN)  {
-      
-      
-       if (z_state==1) {
-			printf("c=%d\n", coil_counter);
-			displayNumberLow(coil_counter);
-			z_state=0;
-			displayNumberHigh(__HAL_TIM_GetCounter(&htim1));
-			// test for speed changes
-		    if (coil_counter == 5)
-                { 	
-			_Set_Motor_freq(4000);
-				}	
-	
-						if (coil_counter == 145)
-					{ 	
-					_Set_Motor_freq(1000);			
-
-				}
-					
-							if (coil_counter == 155)
-					{ 	
-					_Set_Motor_freq(500);			
-
-				}
-					
-								if (coil_counter == 157)
-					{ 	
-					_Set_Motor_freq(300);			
-
-				}
-					
-				if (coil_counter==162 ) {
-					_Motor_Break();
-					_Motor_Start_off();
-				}
-				
-				
-				
-			}
-       
-        }   // end run mode
-  
-       
+    
         
 	// setup mode
   
     if (run_state==SETUP) { 
 
     _RED_LED_ON();
+        
     // down button
     if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) 
     {
@@ -372,6 +328,53 @@ int main(void)
     
     pressed_down_prev=pressed_down;
    // down buttons end 
+    
+    
+    // up button
+    if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) 
+    {
+        pressed_up=1;
+   
+    }   else pressed_up=0;
+    
+        
+    if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) && (pressed_up_prev==0))   
+    {
+            // button presed start counters 
+            delay_counter=0;
+            holded_up=1;
+            up=0;
+    }
+    // check holded key
+    if ((pressed_up==0)&&(holded_up==1) ) holded_up=0;
+    //check short press
+    if ((delay_counter>10)&&(holded_up==1) && (up==0)) 
+    {
+        if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET)
+            {
+        AT_HD44780_PutCustom(19,active_line,' ');
+        active_line=(active_line>0)?active_line-1:3;
+        if (active_line==2) active_line--;        
+        AT_HD44780_PutCustom(19,active_line, 0xc8);
+        up=1;    
+           } 
+    }
+    //check long press
+    
+        if ( (delay_counter>1000) && (holded_up==1)&&(up==1) )
+    {  
+        program.divider= (uint8_t) (5/program.step);
+        write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
+        AT_HD44780_PutCustom(19,active_line,0x20);
+        run_state=IDLE;
+        _RED_LED_OFF();
+        displayNumberHigh(program.coil);
+        displayNumberLow(program.divider);
+    }
+    
+    pressed_up_prev=pressed_up;
+   // up buttons end     
+    
 
 
 
@@ -402,7 +405,7 @@ int main(void)
             sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-            program_max.speed = (uint16_t) (26.8/program.step);
+            program_max.speed = (uint16_t) (25/program.step);
             program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
@@ -454,7 +457,7 @@ int main(void)
             sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-            program_max.speed = (uint16_t) (26.8/program.step);
+            program_max.speed = (uint16_t) (25/program.step);
             program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
@@ -484,7 +487,7 @@ int main(void)
         __HAL_TIM_SetAutoreload(&htim5,data);
 
 	
-	}    
+	}     //if step_down
 	
 }  // end setup mode
    
@@ -504,20 +507,19 @@ if (run_state==IDLE)  {
            
             //how much time buttons pressed?
 
-            delay_counter=0;  
+            delay_counter_setup=0;  
             holded=1;
        } 
    if ((pressed==0) && (holded==1)) holded=0;
              // delay counter updates in the systick handler func
        
        
-                if ((delay_counter>1000)  && (holded==1))
+                if ((delay_counter_setup>1000)  && (holded==1))
             {
                 
-                
-                  if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) ) 
+                 if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) ) 
                       {
-                delay_counter=0;
+                delay_counter_setup=0;
                 pressed_down_prev=1;
                 pressed_up_prev=1;          
                 run_state=SETUP;
@@ -529,14 +531,107 @@ if (run_state==IDLE)  {
                 holded=0;
                      }  
             }
-
-
+         prev_state=pressed;
+            
+        
+       // start/direction buttons 
+            
+       if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET) 
+           
+              presed_start_r=1;
+               else presed_start_r=0;   
+       if ((presed_start_r==1) && (presed_start_r_prev==0)) 
+       {
+         delay_counter=0;
+         holded_start_r=1;
+       }           
+       if ((presed_start_r==0) && (holded_start_r==1))  holded_start_r=0;
        
-
-    prev_state=pressed;
+       if ( (delay_counter>600) && (holded_start_r==1) ) 
+       {
+             holded_start_r=0;
+             run_state=RUN;
+            _GREEN_LED_OFF();
+          
+       
+       }
+       presed_start_r_prev=presed_start_r;
 
         }      // end idle mode
-	}
+
+        
+        
+        
+      //run mode  
+        
+      if (run_state==RUN)  {
+        _BLUE_LED_ON();
+        if (run_state_prev!=RUN) 
+        {
+            
+         __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
+	     __HAL_TIM_SetAutoreload(&htim3,250);
+	       HAL_TIM_Base_Start(&htim3);
+	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+          speed=500;            
+         _Set_Motor_freq(speed);
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
+	    __HAL_TIM_SetAutoreload(&htim1,program.divider);
+	      HAL_TIM_Base_Start(&htim1);
+	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+          coil_counter=0;  
+          _Motor_Break_off();  
+          _Motor_Start();
+            
+              
+        }    
+          
+  
+
+           
+      
+       if (z_state==1) {
+			printf("c=%d\n", coil_counter);
+			displayNumberLow(coil_counter);
+			z_state=0;
+		
+			// test for speed changes
+		    if (coil_counter == 5)
+                { 
+            speed=program.speed*50;                    
+			_Set_Motor_freq( speed);
+				}	
+	
+						if (coil_counter == (uint16_t) program.coil-15)
+					{ 
+                     
+					_Set_Motor_freq(800);			
+
+				}
+					
+
+					
+
+					
+				if (coil_counter==program.coil ) {
+					_Motor_Break();
+					_Motor_Start_off();
+                    run_state=IDLE;
+                    _BLUE_LED_OFF();
+				}
+				
+				
+				
+			}
+       
+        }   // end run mode
+  
+       run_state_prev=run_state;          
+
+        
+        
+        
+	}     //end while
 
   /* USER CODE END 3 */
 
