@@ -52,8 +52,8 @@
 
 /* USER CODE BEGIN Private defines */
 
-#define _Motor_Start()       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-#define _Motor_Start_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
+#define _Motor_Start()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+#define _Motor_Start_off()   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
 #define _Motor_Break_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
 #define _Motor_Break()       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
 //red
@@ -66,11 +66,11 @@
 #define _GREEN_LED_ON()      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
 #define _GREEN_LED_OFF()     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
 // stepper enable
-#define _STEPPER_ENABLE()    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET); 
-#define _STEPPER_DISABLE()   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET); 
+#define _STEPPER_ENABLE()    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_RESET); 
+#define _STEPPER_DISABLE()   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_SET); 
 //stepper direction
-#define _STEPPER_RIGHT()     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
-#define _STEPPER_LEFT()      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+#define _STEPPER_RIGHT()     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_RESET);
+#define _STEPPER_LEFT()      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET);
 
 
 // set frequency from 25 to 5000 hZ

@@ -65,8 +65,10 @@ uint8_t  active_line=0;
 uint8_t  elapsed=0; 
 float step;
 char buf[20];
-uint32_t delay_counter;
+uint32_t delay_counter_l,delay_counter_r,delay_counter;
 uint32_t delay_counter_setup;
+uint32_t delay_counter_plus,delay_counter_minus;
+uint32_t delay_counter_up,delay_counter_down;
 
 
 /* USER CODE END PV */
@@ -253,6 +255,7 @@ int main(void)
      AT_HD44780_Puts(14,3,buf);
      run_state=IDLE;
      run_state_prev=IDLE; 
+      _STEPPER_DISABLE();
       
       
 	 // 18 equals 0.28 mm step tim1 use for dividing 
@@ -295,14 +298,14 @@ int main(void)
     if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && (pressed_down_prev==0))   
     {
             // button presed start counters 
-            delay_counter=0;
+            delay_counter_down=0;
             holded_down=1;
             done=0;
     }
     // check holded key
     if ((pressed_down==0)&&(holded_down==1) ) holded_down=0;
     //check short press
-    if ((delay_counter>10)&&(holded_down==1) && (done==0)) 
+    if ((delay_counter_down>10)&&(holded_down==1) && (done==0)) 
     {
         if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET)
             {
@@ -315,12 +318,18 @@ int main(void)
     }
     //check long press
     
-        if ( (delay_counter>1000) && (holded_down==1)&&(done==1) )
+        if ( (delay_counter_down>1000) && (holded_down==1)&&(done==1) )
     {  
         program.divider= (uint8_t) (5/program.step);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
+        printf("run_state-%d",run_state);
+        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+        printf("exti disabled");
+        holded_down=0;
+        holded_up=0;
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
         displayNumberLow(program.divider);
@@ -341,14 +350,14 @@ int main(void)
     if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) && (pressed_up_prev==0))   
     {
             // button presed start counters 
-            delay_counter=0;
+            delay_counter_up=0;
             holded_up=1;
             up=0;
     }
     // check holded key
     if ((pressed_up==0)&&(holded_up==1) ) holded_up=0;
     //check short press
-    if ((delay_counter>10)&&(holded_up==1) && (up==0)) 
+    if ((delay_counter_up>10)&&(holded_up==1) && (up==0)) 
     {
         if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET)
             {
@@ -361,12 +370,19 @@ int main(void)
     }
     //check long press
     
-        if ( (delay_counter>1000) && (holded_up==1)&&(up==1) )
+        if ( (delay_counter_up>1000) && (holded_up==1)&&(up==1) )
     {  
         program.divider= (uint8_t) (5/program.step);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
+        printf("run_state-%d",run_state);
+        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+        printf("exti disabled");
+        holded_down=0;
+        holded_up=0;
+        
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
         displayNumberLow(program.divider);
@@ -516,15 +532,18 @@ if (run_state==IDLE)  {
        
                 if ((delay_counter_setup>1000)  && (holded==1))
             {
-                
+                 printf("holded setup\n");
                  if ((HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && ( HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) ) 
                       {
+                      
                 delay_counter_setup=0;
                 pressed_down_prev=1;
                 pressed_up_prev=1;          
                 run_state=SETUP;
                 _GREEN_LED_OFF();
                 active_line=0;
+                printf("second stage\n");
+                printf("state-%d",run_state);          
                 AT_HD44780_PutCustom(19,active_line, 0xc8);
                 HAL_NVIC_EnableIRQ(EXTI1_IRQn);
                 HAL_NVIC_EnableIRQ(EXTI2_IRQn);
@@ -536,25 +555,54 @@ if (run_state==IDLE)  {
         
        // start/direction buttons 
             
+            
+       // start right     
        if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET) 
            
               presed_start_r=1;
                else presed_start_r=0;   
        if ((presed_start_r==1) && (presed_start_r_prev==0)) 
        {
-         delay_counter=0;
+         delay_counter_r=0;
          holded_start_r=1;
        }           
        if ((presed_start_r==0) && (holded_start_r==1))  holded_start_r=0;
        
-       if ( (delay_counter>600) && (holded_start_r==1) ) 
+       if ( (delay_counter_r>600) && (holded_start_r==1) ) 
        {
+             printf("st.R");
              holded_start_r=0;
              run_state=RUN;
             _GREEN_LED_OFF();
-          
-       
+           _STEPPER_RIGHT();       
        }
+       
+       //start left
+       if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_7)==GPIO_PIN_RESET) 
+           
+              presed_start_l=1;
+               else presed_start_l=0;   
+       if ((presed_start_l==1) && (presed_start_l_prev==0)) 
+       {
+         delay_counter_l=0;
+         holded_start_l=1;
+       }           
+       if ((presed_start_l==0) && (holded_start_l==1))  holded_start_l=0;
+       
+       if ( (delay_counter_l>600) && (holded_start_l==1) ) 
+       {
+             printf("st L");
+             holded_start_l=0;
+             run_state=RUN;
+            _GREEN_LED_OFF();
+             _STEPPER_LEFT();       
+       }       
+       
+       
+       
+       
+       
+       presed_start_l_prev=presed_start_l;    
        presed_start_r_prev=presed_start_r;
 
         }      // end idle mode
@@ -580,6 +628,7 @@ if (run_state==IDLE)  {
 	      HAL_TIM_Base_Start(&htim1);
 	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
           coil_counter=0;  
+          _STEPPER_ENABLE();  
           _Motor_Break_off();  
           _Motor_Start();
             
@@ -618,6 +667,7 @@ if (run_state==IDLE)  {
 					_Motor_Start_off();
                     run_state=IDLE;
                     _BLUE_LED_OFF();
+                    _STEPPER_DISABLE();
 				}
 				
 				
@@ -630,7 +680,7 @@ if (run_state==IDLE)  {
 
         
         
-        
+        HAL_Delay(1);   
 	}     //end while
 
   /* USER CODE END 3 */
