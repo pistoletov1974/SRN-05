@@ -138,6 +138,7 @@ int main(void)
    uint8_t done=0,up=0;
    uint8_t crc, crc2;
    uint32_t speed;
+   uint32_t speed_brake;
    
    typedef struct {
    uint16_t  coil;
@@ -192,6 +193,11 @@ int main(void)
   MX_DAC_Init();
   MX_TIM6_Init();
   MX_TIM5_Init();
+  // enable preload for autoreload register 
+  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+  (&htim5)->Instance->CR1|=(TIM_CR1_ARPE);
+   
+  
 
   /* USER CODE BEGIN 2 */
     DWT_Init();
@@ -256,6 +262,8 @@ int main(void)
      run_state=IDLE;
      run_state_prev=IDLE; 
       _STEPPER_DISABLE();
+     displayNumberHigh(program.coil);
+     displayNumberLow(0); 
       
       
 	 // 18 equals 0.28 mm step tim1 use for dividing 
@@ -332,7 +340,7 @@ int main(void)
         holded_up=0;
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
-        displayNumberLow(program.divider);
+       // displayNumberLow(program.divider);
     }
     
     pressed_down_prev=pressed_down;
@@ -385,7 +393,7 @@ int main(void)
         
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
-        displayNumberLow(program.divider);
+      //  displayNumberLow(program.divider);
     }
     
     pressed_up_prev=pressed_up;
@@ -465,7 +473,7 @@ int main(void)
 	        AT_HD44780_Puts(14,active_line,buf);
             program.length=program.coil*program.step;
             sprintf(buf,"%6.2f",program.length);
-            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,"       ");
             AT_HD44780_Puts(13,2,buf);        
         break;
         case 1:
@@ -485,7 +493,7 @@ int main(void)
                 }
             program.length=program.coil*program.step;
             sprintf(buf,"%6.2f",program.length);
-            AT_HD44780_Puts(13,2,"      ");
+            AT_HD44780_Puts(13,2,"       ");
             AT_HD44780_Puts(13,2,buf);                
         break;
         case 3:  
@@ -499,8 +507,10 @@ int main(void)
      }//switch   
         //speed up timer
         data=__HAL_TIM_GetAutoreload(&htim5);
-        if(data>30) data=data-10;
+        if(data>40) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
+       // HAL_TIM_PWM_Start_IT(&htim5,TIM_CHANNEL_3);
+        printf("%d /n",data);
 
 	
 	}     //if step_down
@@ -568,7 +578,7 @@ if (run_state==IDLE)  {
        }           
        if ((presed_start_r==0) && (holded_start_r==1))  holded_start_r=0;
        
-       if ( (delay_counter_r>600) && (holded_start_r==1) ) 
+       if ( (delay_counter_r>500) && (holded_start_r==1) ) 
        {
              printf("st.R");
              holded_start_r=0;
@@ -589,7 +599,7 @@ if (run_state==IDLE)  {
        }           
        if ((presed_start_l==0) && (holded_start_l==1))  holded_start_l=0;
        
-       if ( (delay_counter_l>600) && (holded_start_l==1) ) 
+       if ( (delay_counter_l>500) && (holded_start_l==1) ) 
        {
              printf("st L");
              holded_start_l=0;
@@ -619,6 +629,7 @@ if (run_state==IDLE)  {
             
          __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	     __HAL_TIM_SetAutoreload(&htim3,250);
+           (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
           speed=500;            
@@ -630,6 +641,7 @@ if (run_state==IDLE)  {
           coil_counter=0;  
           _STEPPER_ENABLE();  
           _Motor_Break_off();  
+          HAL_Delay(20);
           _Motor_Start();
             
               
@@ -651,10 +663,13 @@ if (run_state==IDLE)  {
 			_Set_Motor_freq( speed);
 				}	
 	
-						if (coil_counter == (uint16_t) program.coil-15)
+						if (coil_counter == (uint16_t) program.coil- (uint16_t)program.speed*0.2 )
 					{ 
+                    speed_brake=program.speed*8; 
+                    speed_brake=(speed_brake>500)?speed_brake:500; 
                      
-					_Set_Motor_freq(800);			
+					_Set_Motor_freq(speed_brake);
+            
 
 				}
 					
