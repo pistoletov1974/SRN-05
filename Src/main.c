@@ -69,6 +69,7 @@ uint32_t delay_counter_l,delay_counter_r,delay_counter;
 uint32_t delay_counter_setup;
 uint32_t delay_counter_plus,delay_counter_minus;
 uint32_t delay_counter_up,delay_counter_down;
+uint16_t coil_break;
 
 
 /* USER CODE END PV */
@@ -194,7 +195,7 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM5_Init();
   // enable preload for autoreload register 
-  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+//  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
   (&htim5)->Instance->CR1|=(TIM_CR1_ARPE);
    
   
@@ -259,11 +260,16 @@ int main(void)
      AT_HD44780_Puts(14,2,buf);     
      sprintf(buf,"%5d",program.speed);
      AT_HD44780_Puts(14,3,buf);
-     run_state=IDLE;
+    
      run_state_prev=IDLE; 
       _STEPPER_DISABLE();
      displayNumberHigh(program.coil);
      displayNumberLow(0); 
+     _Motor_Break();
+	 _Motor_Start_off();
+      run_state=IDLE;
+    
+ 
       
       
 	 // 18 equals 0.28 mm step tim1 use for dividing 
@@ -507,7 +513,7 @@ int main(void)
      }//switch   
         //speed up timer
         data=__HAL_TIM_GetAutoreload(&htim5);
-        if(data>40) data=data-10;
+        if(data>50) data=data-10;
         __HAL_TIM_SetAutoreload(&htim5,data);
        // HAL_TIM_PWM_Start_IT(&htim5,TIM_CHANNEL_3);
         printf("%d /n",data);
@@ -606,8 +612,12 @@ if (run_state==IDLE)  {
              run_state=RUN;
             _GREEN_LED_OFF();
              _STEPPER_LEFT();       
-       }       
-       
+       } 
+
+
+        
+
+                
        
        
        
@@ -629,9 +639,10 @@ if (run_state==IDLE)  {
             
          __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	     __HAL_TIM_SetAutoreload(&htim3,250);
-           (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+         
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+            (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
           speed=500;            
          _Set_Motor_freq(speed);
 	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
@@ -643,8 +654,8 @@ if (run_state==IDLE)  {
           _Motor_Break_off();  
           HAL_Delay(20);
           _Motor_Start();
-            
-              
+         coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.2 ;  
+         printf("coil_break=%d\n",coil_break);     
         }    
           
   
@@ -652,6 +663,8 @@ if (run_state==IDLE)  {
            
       
        if (z_state==1) {
+            
+            
 			printf("c=%d\n", coil_counter);
 			displayNumberLow(coil_counter);
 			z_state=0;
@@ -659,17 +672,22 @@ if (run_state==IDLE)  {
 			// test for speed changes
 		    if (coil_counter == 5)
                 { 
-            speed=program.speed*50;                    
-			_Set_Motor_freq( speed);
+                    
+             speed=program.speed*50;                    
+			 _Set_Motor_freq( speed);
+             printf("speed_max=%d\n",speed);       
 				}	
 	
-						if (coil_counter == (uint16_t) program.coil- (uint16_t)program.speed*0.2 )
+                
+                
+				if (coil_counter == coil_break )
 					{ 
-                    speed_brake=program.speed*8; 
+                    
+                    speed_brake=program.speed*7; 
                     speed_brake=(speed_brake>500)?speed_brake:500; 
                      
 					_Set_Motor_freq(speed_brake);
-            
+                    printf("stop=%d , %d \n",coil_counter,speed_brake);
 
 				}
 					
@@ -683,11 +701,21 @@ if (run_state==IDLE)  {
                     run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();
-				}
-				
-				
-				
+				}   			
 			}
+       
+     //check emergency stop       
+     if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_6)==GPIO_PIN_RESET)
+
+            {
+                    _Motor_Break();
+					_Motor_Start_off();
+                     run_state=IDLE;
+                    _BLUE_LED_OFF();
+                    _STEPPER_DISABLE();                  
+            
+            }
+            
        
         }   // end run mode
   
