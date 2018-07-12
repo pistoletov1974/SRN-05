@@ -209,9 +209,31 @@ int main(void)
     HAL_NVIC_DisableIRQ(EXTI1_IRQn);
     HAL_NVIC_DisableIRQ(EXTI2_IRQn);
     printf("Hello from MCU via SWO\n");
+    
+    
+    
     AT_HD44780_CursorOn();
     AT_HD44780_BlinkOn();
+    
+    
+    // start-stop motor for initial break
     AT_HD44780_Init(20, 4);
+    AT_HD44780_Puts(0, 0, "Запуск");
+    HAL_Delay(2000);
+    __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
+	__HAL_TIM_SetAutoreload(&htim3,250);
+      speed=200;            
+    _Set_Motor_freq(speed);
+	HAL_TIM_Base_Start(&htim3);
+	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+    _Motor_Break_off();
+    _Motor_Start();
+    HAL_Delay(500);
+    _Motor_Break();
+	_Motor_Start_off();
+    
+    
+    
     AT_HD44780_Puts(0, 0, "Кол. витков  ");
     AT_HD44780_Puts(0, 1, "Шаг  ");
     AT_HD44780_Puts(0, 2, "Длинна  ");
@@ -219,7 +241,7 @@ int main(void)
     // setup max & min values of programm
     program_max.coil = 9999;                          
     program_min.coil =1;
-    program_max.speed=99;
+    program_max.speed=90;
     program_min.speed=1;
     program_max.step=0.99;
     program_min.step=0.02;
@@ -245,6 +267,7 @@ int main(void)
      printf("%04x",crc);
      crc2=Crc8((uint8_t*)&program,sizeof(program));
      printf("%04x",crc2);
+     
      if (crc!=crc2) 
       { program.step=0.2;
         program.coil=150;
@@ -252,6 +275,7 @@ int main(void)
         program.speed=50;
         program.divider=25;
       }
+     program_max.speed   =  (uint16_t) (25/program.step-3); 
      sprintf(buf,"%5d",program.coil);
      AT_HD44780_Puts(14,0,buf);
      sprintf(buf,"%5.2f",program.step);
@@ -435,7 +459,7 @@ int main(void)
             sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-            program_max.speed = (uint16_t) (25/program.step);
+            program_max.speed = (uint16_t) (25/program.step-3);
             program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
@@ -487,7 +511,7 @@ int main(void)
             sprintf(buf,"%5.2f",program.step);
             AT_HD44780_Puts(14,active_line,"     ");
 	        AT_HD44780_Puts(14,active_line,buf);
-            program_max.speed = (uint16_t) (25/program.step);
+            program_max.speed = (uint16_t) (25/program.step-3);
             program_max.speed=(program_max.speed>99)?99:program_max.speed;
             if (program.speed>=program_max.speed) 
                 {
@@ -639,12 +663,12 @@ if (run_state==IDLE)  {
             
          __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	     __HAL_TIM_SetAutoreload(&htim3,250);
-         
+           speed=500;            
+         _Set_Motor_freq(speed);
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
             (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
-          speed=500;            
-         _Set_Motor_freq(speed);
+          
 	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
 	    __HAL_TIM_SetAutoreload(&htim1,program.divider);
 	      HAL_TIM_Base_Start(&htim1);
@@ -652,10 +676,11 @@ if (run_state==IDLE)  {
           coil_counter=0;  
           _STEPPER_ENABLE();  
           _Motor_Break_off();  
-          HAL_Delay(20);
+         // HAL_Delay(20);
           _Motor_Start();
          coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.2 ;  
-         printf("coil_break=%d\n",coil_break);     
+         printf("coil_break=%d\n",coil_break);  
+         printf("divider=%d\n",program.divider);
         }    
           
   
@@ -665,7 +690,7 @@ if (run_state==IDLE)  {
        if (z_state==1) {
             
             
-			printf("c=%d\n", coil_counter);
+			//printf("c=%d\n", coil_counter);
 			displayNumberLow(coil_counter);
 			z_state=0;
 		
@@ -695,13 +720,25 @@ if (run_state==IDLE)  {
 					
 
 					
-				if (coil_counter==program.coil ) {
+				if (coil_counter == program.coil ) {
 					_Motor_Break();
 					_Motor_Start_off();
                     run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();
-				}   			
+                    _Set_Motor_freq(500);
+				}   	
+
+                if (coil_counter > program.coil ) {
+					_Motor_Break();
+					_Motor_Start_off();
+                    run_state=IDLE;
+                    _BLUE_LED_OFF();
+                    _STEPPER_DISABLE();
+                    _Set_Motor_freq(500);
+				} 
+
+                
 			}
        
      //check emergency stop       
@@ -712,7 +749,8 @@ if (run_state==IDLE)  {
 					_Motor_Start_off();
                      run_state=IDLE;
                     _BLUE_LED_OFF();
-                    _STEPPER_DISABLE();                  
+                    _STEPPER_DISABLE();  
+                     HAL_Delay(1);
             
             }
             
@@ -723,7 +761,7 @@ if (run_state==IDLE)  {
 
         
         
-        HAL_Delay(1);   
+        HAL_Delay(2);   
 	}     //end while
 
   /* USER CODE END 3 */
