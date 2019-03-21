@@ -695,7 +695,7 @@ if (run_state==IDLE)  {
 			z_state=0;
 		
 			// test for speed changes
-		    if ((coil_counter > 5)  && (coil_counter <12) )
+		    if ((coil_counter > 5)  && (coil_counter <9) )
                 { 
                     
              speed=program.speed*50;                    
