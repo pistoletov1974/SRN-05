@@ -695,15 +695,15 @@ if (run_state==IDLE)  {
 			z_state=0;
 		
 			// test for speed changes
-		    if (coil_counter == 5)
+		    if ((coil_counter > 5)  && (coil_counter <12) )
                 { 
                     
              speed=program.speed*50;                    
 			 _Set_Motor_freq( speed);
              printf("speed_max=%d\n",speed);       
-				}	
+				}
+            printf("prescaller=%d\n",(&htim3)->Instance->PSC);                
 	
-                
                 
 				if (coil_counter == coil_break )
 					{ 
@@ -717,6 +717,14 @@ if (run_state==IDLE)  {
 				}
 					
 
+                // write prescaller if button pressed
+                  if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET  || HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET  )  
+
+                       {
+                             speed=program.speed*50;                    
+			                 _Set_Motor_freq( speed);   
+                       }
+                
 					
 
 					
