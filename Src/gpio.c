@@ -130,7 +130,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(Z_state_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PE14 PE15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_10|GPIO_PIN_11;
+  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1| GPIO_PIN_2 | GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_10|GPIO_PIN_11;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
