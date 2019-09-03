@@ -667,7 +667,7 @@ if (run_state==IDLE)  {
          _Set_Motor_freq(speed);
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-            (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+          //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
           
 	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
 	    __HAL_TIM_SetAutoreload(&htim1,program.divider);
@@ -678,7 +678,7 @@ if (run_state==IDLE)  {
           _Motor_Break_off();  
          // HAL_Delay(20);
           _Motor_Start();
-         coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.2 ;  
+         coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.25 ;  
          printf("coil_break=%d\n",coil_break);  
          printf("divider=%d\n",program.divider);
         }    
@@ -697,18 +697,18 @@ if (run_state==IDLE)  {
 			// test for speed changes
 		    if ((coil_counter > 5)  && (coil_counter <9) )
                 { 
-                    
-             speed=program.speed*50;                    
-			 _Set_Motor_freq( speed);
-             printf("speed_max=%d\n",speed);       
+                speed=program.speed*50;                    
+			    _Set_Motor_freq( speed);
+                printf("speed_max=%d\n",speed); 
+                printf("prescaller=%d\n",(&htim3)->Instance->PSC);                     
 				}
-            printf("prescaller=%d\n",(&htim3)->Instance->PSC);                
+                           
 	
-                
+            // breaking mode near stop     
 				if (coil_counter == coil_break )
 					{ 
                     
-                    speed_brake=program.speed*7; 
+                    speed_brake=program.speed*6; 
                     speed_brake=(speed_brake>500)?speed_brake:500; 
                      
 					_Set_Motor_freq(speed_brake);
@@ -718,17 +718,12 @@ if (run_state==IDLE)  {
 					
 
                 // write prescaller if button pressed
-                  if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET  || HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET  )  
-
-                       {
-                             speed=program.speed*50;                    
-			                 _Set_Motor_freq( speed);   
-                       }
+          
                 
 					
 
 					
-				if (coil_counter == program.coil ) {
+				if (coil_counter >= program.coil ) {
 					_Motor_Break();
 					_Motor_Start_off();
                     run_state=IDLE;
@@ -737,14 +732,7 @@ if (run_state==IDLE)  {
                     _Set_Motor_freq(500);
 				}   	
 
-                if (coil_counter > program.coil ) {
-					_Motor_Break();
-					_Motor_Start_off();
-                    run_state=IDLE;
-                    _BLUE_LED_OFF();
-                    _STEPPER_DISABLE();
-                    _Set_Motor_freq(500);
-				} 
+
 
                 
 			}

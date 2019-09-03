@@ -51,9 +51,10 @@
 #define Z_state_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
-
+// PB11 to 18 inverter PIN
 #define _Motor_Start()       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
 #define _Motor_Start_off()   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
+//PC7 to 29 inverter pin
 #define _Motor_Break_off()   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
 #define _Motor_Break()       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
  // LEDS REDEFINED in new board 11.04/2019 e0 e1 e2
