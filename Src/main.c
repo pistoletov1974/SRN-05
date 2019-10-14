@@ -63,13 +63,14 @@ uint8_t period_step_down=0;
 uint16_t coil_counter=0;
 uint8_t  active_line=0;
 uint8_t  elapsed=0; 
-float step;
+float step,real_step_f;
 char buf[20];
 uint32_t delay_counter_l,delay_counter_r,delay_counter;
 uint32_t delay_counter_setup;
 uint32_t delay_counter_plus,delay_counter_minus;
 uint32_t delay_counter_up,delay_counter_down;
 uint16_t coil_break;
+uint16_t real_step; // step with error dividing
 
 
 /* USER CODE END PV */
@@ -243,7 +244,7 @@ int main(void)
     program_min.coil =1;
     program_max.speed=90;
     program_min.speed=1;
-    program_max.step=0.99;
+    program_max.step=1.5;
     program_min.step=0.02;
     
     program.coil=0;
@@ -360,8 +361,9 @@ int main(void)
     {  
         program.divider= (uint8_t) (5/program.step);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
-        AT_HD44780_PutCustom(19,active_line,0x20);
+        AT_HD44780_PutCustom(19,active_line,0x20);         // clear pointer sign
         run_state=IDLE;
+        
         printf("run_state-%d",run_state);
         HAL_NVIC_DisableIRQ(EXTI1_IRQn);
         HAL_NVIC_DisableIRQ(EXTI2_IRQn);
@@ -370,6 +372,9 @@ int main(void)
         holded_up=0;
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
+        real_step= ((500/program.divider));
+        displayNumberLow(real_step);
+         printf("real step=%d",real_step);
        // displayNumberLow(program.divider);
     }
     
@@ -412,6 +417,7 @@ int main(void)
     {  
         program.divider= (uint8_t) (5/program.step);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
+       
         AT_HD44780_PutCustom(19,active_line,0x20);
         run_state=IDLE;
         printf("run_state-%d",run_state);
@@ -423,6 +429,9 @@ int main(void)
         
         _RED_LED_OFF();
         displayNumberHigh(program.coil);
+        real_step=500/program.divider;
+        displayNumberLow(real_step);
+        printf("real step=%d",real_step);
       //  displayNumberLow(program.divider);
     }
     
@@ -656,14 +665,16 @@ if (run_state==IDLE)  {
         
       //run mode  
         
-      if (run_state==RUN)  {
+    if (run_state==RUN)  {
         _BLUE_LED_ON();
         if (run_state_prev!=RUN) 
         {
             
          __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	     __HAL_TIM_SetAutoreload(&htim3,250);
-           speed=500;            
+           
+            
+         speed= (program.speed<30)?program.speed*25:program.speed*7;            
          _Set_Motor_freq(speed);
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
