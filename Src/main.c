@@ -220,7 +220,7 @@ int main(void)
     // start-stop motor for initial break
     AT_HD44780_Init(20, 4);
     AT_HD44780_Puts(0, 0, "Запуск");
-    HAL_Delay(2000);
+    HAL_Delay(1000);
     __HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,120); 
 	__HAL_TIM_SetAutoreload(&htim3,250);
       speed=200;            
@@ -277,6 +277,7 @@ int main(void)
         program.divider=25;
       }
      program_max.speed   =  (uint16_t) (25/program.step-3); 
+     program_max.speed=(program_max.speed>99)?99:program_max.speed;
      sprintf(buf,"%5d",program.coil);
      AT_HD44780_Puts(14,0,buf);
      sprintf(buf,"%5.2f",program.step);
@@ -291,6 +292,8 @@ int main(void)
      displayNumberHigh(program.coil);
      displayNumberLow(0); 
      _Motor_Break();
+      HAL_Delay(1);
+     _Motor_Break_off();
 	 _Motor_Start_off();
       run_state=IDLE;
     
@@ -304,7 +307,7 @@ int main(void)
 	 
 	 // tim3 using for freq generation for owen speed control
 
-     //tetst blue led toggle
+   
      //HAL_TIM_Base_Start_IT(&htim6);
 	 
 	 
@@ -689,6 +692,7 @@ if (run_state==IDLE)  {
           _Motor_Break_off();  
          // HAL_Delay(20);
           _Motor_Start();
+                     
          coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.25 ;  
          printf("coil_break=%d\n",coil_break);  
          printf("divider=%d\n",program.divider);
@@ -735,8 +739,10 @@ if (run_state==IDLE)  {
 
 					
 				if (coil_counter >= program.coil ) {
-					_Motor_Break();
-					_Motor_Start_off();
+                    _Motor_Start_off(); 				
+                    _Motor_Break();
+                 
+					
                     run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();
@@ -752,12 +758,15 @@ if (run_state==IDLE)  {
      if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_6)==GPIO_PIN_RESET)
 
             {
+                
+                    _Motor_Start_off();
                     _Motor_Break();
-					_Motor_Start_off();
-                     run_state=IDLE;
+                                                   
+					 run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();  
                      HAL_Delay(1);
+                    _Set_Motor_freq(500);
             
             }
             
