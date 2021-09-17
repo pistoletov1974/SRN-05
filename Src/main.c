@@ -45,6 +45,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "string.h"
 
 /* USER CODE BEGIN Includes */
 #include "max7219.h"
@@ -142,13 +143,38 @@ int main(void)
    uint32_t speed;
    uint32_t speed_brake;
    
+	 
+	 typedef enum {
+	   NONE=0,
+		 RIGHT=1,
+		 LEFT=2,
+		 BOTH=3
+	 } extra_mode_t;
+	 
+	 
+	 typedef enum {
+	    MAIN_MENU = 0,
+		  EXTRA_MENU = 1,
+	  }  menu_t;
+	 
+	 uint8_t menu_changed = 0;
+	 
+		menu_t active_menu = MAIN_MENU;
+		
+	 //new structure with extra step 
    typedef struct {
    uint16_t  coil;
    uint16_t   speed;
    uint8_t   divider;
-   float     step;
-   float     length;        
+	 float     step;
+   float     length;  //main step
+   //extra program step
+   uint8_t   divider_extra;
+	 float     step_extra;	 
+   uint8_t   coil_extra;
+   extra_mode_t   extra_mode;		 
    }  program_t;    
+	 
    program_t program; 
    program_t program_max;
    program_t program_min;   
@@ -239,13 +265,22 @@ int main(void)
     AT_HD44780_Puts(0, 1, "Øàã  ");
     AT_HD44780_Puts(0, 2, "Äëèííà  ");
     AT_HD44780_Puts(0, 3, "Cêîðîñòü  ");
-    // setup max & min values of programm
+    // setup max & min values of programm  
     program_max.coil = 9999;                          
     program_min.coil =1;
     program_max.speed=90;
     program_min.speed=1;
     program_max.step=1.5;
     program_min.step=0.02;
+		
+		program_min.coil_extra = 1;
+		program_max.coil_extra = 100;
+    program_min.step_extra = 0.02;
+		program_max.step_extra = 1.0;
+		program_min.extra_mode = NONE;
+		program_max.extra_mode = BOTH;
+		
+		
     
     program.coil=0;
     program.step=0;
@@ -275,6 +310,13 @@ int main(void)
         program.length=30;
         program.speed=50;
         program.divider=25;
+				program.coil_extra = 0;
+				
+				program.extra_mode = NONE;
+				program.coil_extra = 20;
+				program.step_extra = 0.1;
+				program.divider_extra = (uint8_t) (5 / (program.step_extra));
+				
       }
      program_max.speed   =  (uint16_t) (25/program.step-3); 
      program_max.speed=(program_max.speed>99)?99:program_max.speed;
@@ -328,7 +370,36 @@ int main(void)
     if (run_state==SETUP) { 
 
     _RED_LED_ON();
-        
+    
+
+    if (active_menu == MAIN_MENU) {
+    
+			
+	 if		(menu_changed ==1 ) {
+		 menu_changed = 0;
+		 AT_HD44780_Clear(); 
+    AT_HD44780_Puts(0, 0, "Êîë. âèòêîâ  ");
+    AT_HD44780_Puts(0, 1, "Øàã  ");
+    AT_HD44780_Puts(0, 2, "Äëèííà  ");
+    AT_HD44780_Puts(0, 3, "Cêîðîñòü  ");			
+		active_line = 0; 
+		 
+		//fill data from structure
+     sprintf(buf,"%5d",program.coil);
+     AT_HD44780_Puts(14,0,buf);
+     sprintf(buf,"%5.2f",program.step);
+     AT_HD44780_Puts(14,1,buf);
+     sprintf(buf,"%5.2f",program.length);
+     AT_HD44780_Puts(14,2,buf);     
+     sprintf(buf,"%5d",program.speed);
+     AT_HD44780_Puts(14,3,buf); 	
+     AT_HD44780_PutCustom(19,active_line, 0xc8);		 
+		 
+		 
+	 }
+
+
+			
     // down button
     if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) 
     {
@@ -553,9 +624,287 @@ int main(void)
         __HAL_TIM_SetAutoreload(&htim5,data);
        // HAL_TIM_PWM_Start_IT(&htim5,TIM_CHANNEL_3);
         printf("%d /n",data);
+	
+	     }     //if step_down
+	
+	     if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_7)==GPIO_PIN_RESET) {		
+			    menu_changed = 1; 
+				  active_menu = EXTRA_MENU;
+			}
+	
+	
+  }  //MAIN MENU SCREEN
+		
+  if (active_menu == EXTRA_MENU) {
+		
+			 if		(menu_changed ==1 ) {
+		menu_changed = 0;
+		AT_HD44780_Clear(); 
+		AT_HD44780_Puts(0, 0, "Äîïîëíèòåëüíûé øàã  ");
+		AT_HD44780_Puts(0, 1, "Êîë. Âèòêîâ  ");	
+    AT_HD44780_Puts(0, 2, "Øàã  ");
+    AT_HD44780_Puts(0, 3, "Ðåæèì:  ");
+		
+		active_line = 1; 
+				 
+		 sprintf(buf,"%5d",program.coil_extra);
+     AT_HD44780_Puts(14,1,buf);
+     sprintf(buf,"%5.2f",program.step_extra);
+     AT_HD44780_Puts(14,2,buf);
+     sprintf(buf,"%5d",program.extra_mode);
+     
+     switch (program.extra_mode) {
+			 case NONE: strcpy(buf,"ÍÅÒ");
+			 break;
+			 case LEFT: strcpy(buf,"ËÅÂ");
+			 break;
+			 case RIGHT: strcpy(buf,"ÏÐÂ");
+			 break;
+			 case BOTH: strcpy(buf, "Ë+Ï");
+			 default: break;
+		 
+		 } //switch
+				 
+     AT_HD44780_Puts(16,3,buf); 	
+     AT_HD44780_PutCustom(19,active_line, 0xc8);			
+			 } // menu changed 
+		 
+		     // down button
+    if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) 
+    {
+        pressed_down=1;
+   
+    }   else pressed_down=0;
+    
+        
+    if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET) && (pressed_down_prev==0))   
+    {
+            // button presed start counters 
+            delay_counter_down=0;
+            holded_down=1;
+            done=0;
+    }
+    // check holded key
+    if ((pressed_down==0)&&(holded_down==1) ) holded_down=0;
+    //check short press
+    if ((delay_counter_down>10)&&(holded_down==1) && (done==0)) 
+    {
+        if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_3)==GPIO_PIN_RESET)
+            {
+        AT_HD44780_PutCustom(19,active_line,' ');
+        active_line=(active_line<3)?active_line+1:1;
+        AT_HD44780_PutCustom(19,active_line, 0xc8);
+        done=1;    
+           } 
+    }
+    //check long press
+    
+        if ( (delay_counter_down>1000) && (holded_down==1)&&(done==1) )
+    {  
+        program.divider= (uint8_t) (5/program.step);
+			  program.divider_extra = (uint8_t) (5/program.step_extra);
+        write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
+        AT_HD44780_PutCustom(19,active_line,0x20);         // clear pointer sign
+        run_state=IDLE;
+        
+        printf("run_state-%d",run_state);
+        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+        printf("exti disabled");
+        holded_down=0;
+        holded_up=0;
+        _RED_LED_OFF();
+        displayNumberHigh(program.coil);
+        real_step= ((500/program.divider));
+        displayNumberLow(real_step);
+         printf("real step=%d",real_step);
+       // displayNumberLow(program.divider);
+    }
+    
+    pressed_down_prev=pressed_down;
+   // down buttons end 
+    
+    
+    // up button
+    if  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) 
+    {
+        pressed_up=1;
+   
+    }   else pressed_up=0;
+    
+        
+    if (  (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET) && (pressed_up_prev==0))   
+    {
+            // button presed start counters 
+            delay_counter_up=0;
+            holded_up=1;
+            up=0;
+    }
+    // check holded key
+    if ((pressed_up==0)&&(holded_up==1) ) holded_up=0;
+    //check short press
+    if ((delay_counter_up>10)&&(holded_up==1) && (up==0)) 
+    {
+        if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_4)==GPIO_PIN_RESET)
+            {
+        AT_HD44780_PutCustom(19,active_line,' ');
+        active_line=(active_line>1)?active_line-1:3;
+        AT_HD44780_PutCustom(19,active_line, 0xc8);
+        up=1;    
+           } 
+    }
+    //check long press
+    
+        if ( (delay_counter_up>1000) && (holded_up==1)&&(up==1) )
+    {  
+        program.divider= (uint8_t) (5/program.step);
+			  program.divider_extra = (uint8_t) (5/program.step_extra);
+        write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
+       
+        AT_HD44780_PutCustom(19,active_line,0x20);
+        run_state=IDLE;
+        printf("run_state-%d",run_state);
+        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+        printf("exti disabled");
+        holded_down=0;
+        holded_up=0;
+        
+        _RED_LED_OFF();
+        displayNumberHigh(program.coil);
+        real_step=500/program.divider;
+        displayNumberLow(real_step);
+        printf("real step=%d",real_step);
+      //  displayNumberLow(program.divider);
+    }
+    
+    pressed_up_prev=pressed_up;
+   // up buttons end 
+
+
+     
+   //+ -  buttons 
+
+
+   	if (period_step_up==1) {
+        
+	    period_step_up=0;
+    switch (active_line)
+    {
+        case 1:
+            program.coil_extra= (program.coil_extra<program_max.coil_extra)?program.coil_extra+1:program.coil_extra;
+            sprintf(buf,"%5d",program.coil_extra);
+            AT_HD44780_Puts(14,active_line,"     ");
+	          AT_HD44780_Puts(14,active_line,buf);
+       break;
+
+        case 2:
+            program.step_extra = (program.step_extra < program_max.step_extra )?program.step_extra + (float)0.01:program.step_extra;
+            sprintf(buf,"%5.2f",program.step_extra);
+            AT_HD44780_Puts(14,active_line,"     ");
+	          AT_HD44780_Puts(14,active_line,buf);
+        break;
+
+        case 3:  
+            program.extra_mode = (program.extra_mode < program_max.extra_mode )? program.extra_mode +1:program.extra_mode;
+           
+            AT_HD44780_Puts(14,active_line,"     ");
+				     switch (program.extra_mode) {
+			           case NONE: strcpy(buf,"ÍÅÒ");
+			           break;
+			           case LEFT: strcpy(buf,"ËÅÂ");
+			           break;
+			           case RIGHT: strcpy(buf,"ÏÐÂ");
+			           break;
+			           case BOTH: strcpy(buf, "Ë+Ï");
+			     default: break;
+		 
+		 } //switch
+	        AT_HD44780_Puts(16,active_line,buf);            
+        break;
+				
+				
+        default: break;
+
+                
+     }//switch         
+        //speed up timer 
+        data=__HAL_TIM_GetAutoreload(&htim5);
+        if(data>30) data=data-10;
+        __HAL_TIM_SetAutoreload(&htim5,data);
+		
+	} // if step_up
+    
+	if (period_step_down==1) {
+	    period_step_down=0;
+            switch (active_line)
+    {
+        case 1:
+            program.coil_extra= (program.coil_extra > program_min.coil_extra) ? program.coil_extra-1:program.coil_extra;
+            sprintf(buf,"%5d",program.coil_extra);
+            AT_HD44780_Puts(14,active_line,"     ");
+	          AT_HD44780_Puts(14,active_line,buf);
+      
+        break;
+				
+        case 2:
+            program.step_extra = (program.step_extra>program_min.step_extra)?program.step_extra -(float)0.01:program.step_extra;
+            sprintf(buf,"%5.2f",program.step_extra);
+            AT_HD44780_Puts(14,active_line,"     ");
+	        AT_HD44780_Puts(14,active_line,buf);
+        break;
+ 
+				case 3:  
+            program.extra_mode = (program.extra_mode > program_min.extra_mode) ? program.extra_mode-1:program.extra_mode;
+             AT_HD44780_Puts(14,active_line,"     ");
+				     switch (program.extra_mode) {
+			           case NONE: strcpy(buf,"ÍÅÒ");
+			           break;
+			           case LEFT: strcpy(buf,"ËÅÂ");
+			           break;
+			           case RIGHT: strcpy(buf,"ÏÐÂ");
+			           break;
+			           case BOTH: strcpy(buf, "Ë+Ï");
+			     default: break;
+		 
+		 } //switch
+	        AT_HD44780_Puts(16,active_line,buf); 
+        break;
+        default:break;
+        
+     }//switch   
+        //speed up timer
+        data=__HAL_TIM_GetAutoreload(&htim5);
+        if(data>50) data=data-10;
+        __HAL_TIM_SetAutoreload(&htim5,data);
+       // HAL_TIM_PWM_Start_IT(&htim5,TIM_CHANNEL_3);
+        printf("%d /n",data);
+	
+	     }     //if step_down
+
+   //+- buttons			 
+
+		
+				 
+				 
+
+		
+
+    
+     if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET) 	{	
+			 active_menu = MAIN_MENU;
+			 menu_changed = 1;
+		 }
+		
+		
+	
+	}//EXTRA MENU
+
+
+
+
 
 	
-	}     //if step_down
 	
 }  // end setup mode
    
