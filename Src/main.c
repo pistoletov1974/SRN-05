@@ -142,6 +142,7 @@ int main(void)
    uint8_t crc, crc2;
    uint32_t speed;
    uint32_t speed_brake;
+	 HAL_StatusTypeDef state;
    
 	 
 	 typedef enum {
@@ -437,6 +438,7 @@ int main(void)
         if ( (delay_counter_down>1000) && (holded_down==1)&&(done==1) )
     {  
         program.divider= (uint8_t) (5/program.step);
+			program.divider_extra = (uint8_t) (5/program.step_extra);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
         AT_HD44780_PutCustom(19,active_line,0x20);         // clear pointer sign
         run_state=IDLE;
@@ -493,6 +495,7 @@ int main(void)
         if ( (delay_counter_up>1000) && (holded_up==1)&&(up==1) )
     {  
         program.divider= (uint8_t) (5/program.step);
+			  program.divider_extra = (uint8_t) (5/program.step_extra);
         write_to_backup_sram((uint8_t*)&program, sizeof(program),0x01);
        
         AT_HD44780_PutCustom(19,active_line,0x20);
@@ -1037,10 +1040,12 @@ if (run_state==IDLE)  {
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
           //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
     
-              __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
+              __HAL_TIM_SetCounter(&htim1,0UL);
+					    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
 	            __HAL_TIM_SetAutoreload(&htim1,program.divider);
-	      HAL_TIM_Base_Start(&htim1);
-	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+	  
+	       state = HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+				 printf("\r\n HAL STATE  %d\r\n",state);	
           coil_counter=0;  
          printf("\r\n divider %d speed %d\r \n ",program.divider, speed); 
           _Motor_Break_off();  
@@ -1053,7 +1058,7 @@ if (run_state==IDLE)  {
          coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.25 ;  
          printf("coil_break=%d\n",coil_break);  
          printf("divider=%d\n",program.divider);
-        }    
+        }    //first run 
           
   
 
@@ -1098,25 +1103,25 @@ if (run_state==IDLE)  {
 					
 
 					
-				if (coil_counter >= program.coil ) {
+				if (coil_counter == program.coil ) {
                     _Motor_Start_off(); 				
                     _Motor_Break();
-                 
+                     HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1); 
 					
                      if ((program.extra_mode & moving) != 0){
 											   displayNumberHigh(program.coil_extra);
 										   run_state = EXTRA_STEP;
-											 HAL_TIM_Base_Stop(&htim1);
+											 HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1); 
 											 _STEPPER_DISABLE();
 											 HAL_Delay(700);
-											
+											 _Set_Motor_freq(700); //extra step speed
 											 displayNumberHigh(program.coil_extra);
 											  printf("extra step=%d  \n",program.extra_mode);
 											  }         
                     else {
 										displayNumberHigh(program.coil);	
            					run_state=IDLE;
-										HAL_TIM_Base_Stop(&htim1);
+								     HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1);  
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();
                     _Set_Motor_freq(500);
@@ -1135,7 +1140,7 @@ if (run_state==IDLE)  {
                 
                     _Motor_Start_off();
                     _Motor_Break();
-                                                   
+                     HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1);                                
 					           run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();  
@@ -1159,15 +1164,8 @@ if (run_state==IDLE)  {
         {
             
          printf("extra step init\r\n");
-	       HAL_TIM_Base_Start(&htim3);
-	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-          //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
-          
-	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
-	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
-	      HAL_TIM_Base_Start(&htim1);
-	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
-          coil_counter=0;  
+	       
+  
 				
            printf("\r\nExtra step divider %d speed %d\r \n ",program.divider_extra, speed); 
 
@@ -1187,11 +1185,21 @@ if (run_state==IDLE)  {
        }           
        if ((presed_start_r==0) && (holded_start_r==1))  holded_start_r=0;
        
-       if ( (delay_counter_r>500) && (holded_start_r==1) && ((program.extra_mode == LEFT) || (program.extra_mode == BOTH)) ) 
+       if ( (delay_counter_r>500) && (holded_start_r==1) && (moving == LEFT)  ) 
        {
              printf("extra.R");
 				     displayNumberLow(0);
              holded_start_r=0;
+				     	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+          //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+				 __HAL_TIM_SetCounter(&htim1,0UL);    
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
+	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
+	  
+	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+          coil_counter=0; 
+				 
+				 
              _STEPPER_RIGHT(); 
              _STEPPER_ENABLE();  
              _Motor_Break_off();  
@@ -1211,10 +1219,18 @@ if (run_state==IDLE)  {
        }           
        if ((presed_start_l==0) && (holded_start_l==1))  holded_start_l=0;
        
-       if ( (delay_counter_l>500) && (holded_start_l==1)  && ((program.extra_mode == RIGHT) || (program.extra_mode == BOTH)) ) 
+       if ( (delay_counter_l>500) && (holded_start_l==1)  && (moving == RIGHT)  ) 
        {
              printf("extra  L");
 				      displayNumberLow(0);
+				 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+          //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+       __HAL_TIM_SetCounter(&htim1,0UL);      
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
+	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
+	  
+	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+          coil_counter=0;
              holded_start_l=0;
             _STEPPER_LEFT(); 
             _STEPPER_ENABLE();  
@@ -1237,7 +1253,7 @@ if (run_state==IDLE)  {
 					           run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();  
-							      HAL_TIM_Base_Stop(&htim1);
+							      HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1);  
                      HAL_Delay(1);
                     _Set_Motor_freq(500);
              }
@@ -1256,7 +1272,7 @@ if (run_state==IDLE)  {
 				            displayNumberHigh(program.coil);
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();  
-				            HAL_TIM_Base_Stop(&htim1);
+				             HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1); 
                      HAL_Delay(1);
                     _Set_Motor_freq(500);			
 			}				 
