@@ -151,6 +151,8 @@ int main(void)
 		 BOTH=3
 	 } extra_mode_t;
 	 
+	 extra_mode_t moving;
+	 
 	 
 	 typedef enum {
 	    MAIN_MENU = 0,
@@ -185,7 +187,8 @@ int main(void)
    IDLE=0x00,                      
    SETUP,
    RUN,
-   EMERGENCY    
+   EMERGENCY,
+   EXTRA_STEP		 
    } states;
    states run_state, run_state_prev;
 
@@ -976,6 +979,7 @@ if (run_state==IDLE)  {
              run_state=RUN;
             _GREEN_LED_OFF();
            _STEPPER_RIGHT();       
+				   moving = LEFT;  //switched mode names 
        }
        
        //start left
@@ -996,7 +1000,8 @@ if (run_state==IDLE)  {
              holded_start_l=0;
              run_state=RUN;
             _GREEN_LED_OFF();
-             _STEPPER_LEFT();       
+             _STEPPER_LEFT(); 
+             moving = RIGHT;	//switched mode names (button F5 F7 incorect names )			 
        } 
 
 
@@ -1031,16 +1036,19 @@ if (run_state==IDLE)  {
 	       HAL_TIM_Base_Start(&htim3);
 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
           //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
-          
-	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
-	    __HAL_TIM_SetAutoreload(&htim1,program.divider);
+    
+              __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
+	            __HAL_TIM_SetAutoreload(&htim1,program.divider);
 	      HAL_TIM_Base_Start(&htim1);
 	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
           coil_counter=0;  
-          _STEPPER_ENABLE();  
+         printf("\r\n divider %d speed %d\r \n ",program.divider, speed); 
           _Motor_Break_off();  
-         // HAL_Delay(20);
+					 _STEPPER_ENABLE(); 
+           HAL_Delay(20);
           _Motor_Start();
+				
+					
                      
          coil_break = (uint16_t) program.coil- (uint16_t)program.speed*0.25 ;  
          printf("coil_break=%d\n",coil_break);  
@@ -1057,12 +1065,15 @@ if (run_state==IDLE)  {
 			//printf("c=%d\n", coil_counter);
 			displayNumberLow(coil_counter);
 			z_state=0;
-		
+
+				 
+				 
+				 
 			// test for speed changes
 		    if ((coil_counter > 5)  && (coil_counter <9) )
                 { 
                 speed=program.speed*50;                    
-			    _Set_Motor_freq( speed);
+			          _Set_Motor_freq( speed);
                 printf("speed_max=%d\n",speed); 
                 printf("prescaller=%d\n",(&htim3)->Instance->PSC);                     
 				}
@@ -1075,13 +1086,13 @@ if (run_state==IDLE)  {
                     speed_brake=program.speed*6; 
                     speed_brake=(speed_brake>500)?speed_brake:500; 
                      
-					_Set_Motor_freq(speed_brake);
+					          _Set_Motor_freq(speed_brake);
                     printf("stop=%d , %d \n",coil_counter,speed_brake);
 
 				}
 					
 
-                // write prescaller if button pressed
+                
           
                 
 					
@@ -1092,16 +1103,30 @@ if (run_state==IDLE)  {
                     _Motor_Break();
                  
 					
-                    run_state=IDLE;
+                     if ((program.extra_mode & moving) != 0){
+											   displayNumberHigh(program.coil_extra);
+										   run_state = EXTRA_STEP;
+											 HAL_TIM_Base_Stop(&htim1);
+											 _STEPPER_DISABLE();
+											 HAL_Delay(700);
+											
+											 displayNumberHigh(program.coil_extra);
+											  printf("extra step=%d  \n",program.extra_mode);
+											  }         
+                    else {
+										displayNumberHigh(program.coil);	
+           					run_state=IDLE;
+										HAL_TIM_Base_Stop(&htim1);
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();
                     _Set_Motor_freq(500);
-				}   	
+										}
+				} //   	
 
 
 
                 
-			}
+			} //z_state=1
        
      //check emergency stop       
      if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_6)==GPIO_PIN_RESET)
@@ -1111,9 +1136,10 @@ if (run_state==IDLE)  {
                     _Motor_Start_off();
                     _Motor_Break();
                                                    
-					 run_state=IDLE;
+					           run_state=IDLE;
                     _BLUE_LED_OFF();
                     _STEPPER_DISABLE();  
+							      HAL_TIM_Base_Stop(&htim1);
                      HAL_Delay(1);
                     _Set_Motor_freq(500);
             
@@ -1121,12 +1147,134 @@ if (run_state==IDLE)  {
             
        
         }   // end run mode
+		
+				
+				
+			if  (run_state == EXTRA_STEP) 
+			{
+				
+				//init for extra step
+			
+				if (run_state_prev!=EXTRA_STEP) 
+        {
+            
+         printf("extra step init\r\n");
+	       HAL_TIM_Base_Start(&htim3);
+	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+          //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
+          
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
+	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
+	      HAL_TIM_Base_Start(&htim1);
+	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+          coil_counter=0;  
+				
+           printf("\r\nExtra step divider %d speed %d\r \n ",program.divider_extra, speed); 
+
+        }    
+         
+        
+				// buttons in extra mode
+				// start right     
+       if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_5)==GPIO_PIN_RESET)            
+              presed_start_r=1;
+               else presed_start_r=0;   
+			 
+       if ((presed_start_r==1) && (presed_start_r_prev==0)) 
+       {
+         delay_counter_r=0;
+         holded_start_r=1;
+       }           
+       if ((presed_start_r==0) && (holded_start_r==1))  holded_start_r=0;
+       
+       if ( (delay_counter_r>500) && (holded_start_r==1) && ((program.extra_mode == LEFT) || (program.extra_mode == BOTH)) ) 
+       {
+             printf("extra.R");
+				     displayNumberLow(0);
+             holded_start_r=0;
+             _STEPPER_RIGHT(); 
+             _STEPPER_ENABLE();  
+             _Motor_Break_off();  
+             _Motor_Start(); 				
+ 
+       }
+       
+       //start left
+       if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_7)==GPIO_PIN_RESET) 
+           
+              presed_start_l=1;
+               else presed_start_l=0;   
+       if ((presed_start_l==1) && (presed_start_l_prev==0)) 
+       {
+         delay_counter_l=0;
+         holded_start_l=1;
+       }           
+       if ((presed_start_l==0) && (holded_start_l==1))  holded_start_l=0;
+       
+       if ( (delay_counter_l>500) && (holded_start_l==1)  && ((program.extra_mode == RIGHT) || (program.extra_mode == BOTH)) ) 
+       {
+             printf("extra  L");
+				      displayNumberLow(0);
+             holded_start_l=0;
+            _STEPPER_LEFT(); 
+            _STEPPER_ENABLE();  
+            _Motor_Break_off();  
+            _Motor_Start();				 
+       } 
+
+       presed_start_l_prev=presed_start_l;    
+       presed_start_r_prev=presed_start_r;
+
+			
+
+
+           //check emergency stop       
+     if (HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_6)==GPIO_PIN_RESET)
+            {             
+                    _Motor_Start_off();
+                    _Motor_Break();
+                    displayNumberHigh(program.coil);                              
+					           run_state=IDLE;
+                    _BLUE_LED_OFF();
+                    _STEPPER_DISABLE();  
+							      HAL_TIM_Base_Stop(&htim1);
+                     HAL_Delay(1);
+                    _Set_Motor_freq(500);
+             }
+            			 
+			 if (z_state==1) {
+
+			displayNumberLow(coil_counter);
+			z_state=0;	
+			
+      
+      if ( coil_counter >= program.coil_extra  ) {
+				
+				            _Motor_Start_off();
+                    _Motor_Break();                                                   
+					           run_state=IDLE;
+				            displayNumberHigh(program.coil);
+                    _BLUE_LED_OFF();
+                    _STEPPER_DISABLE();  
+				            HAL_TIM_Base_Stop(&htim1);
+                     HAL_Delay(1);
+                    _Set_Motor_freq(500);			
+			}				 
+				
+		}	
+				
+				
+			
+			} //end extra step mode 
+				
+				
+				
   
        run_state_prev=run_state;          
 
         
         
-        HAL_Delay(2);   
+        HAL_Delay(1);   
 	}     //end while
 
   /* USER CODE END 3 */

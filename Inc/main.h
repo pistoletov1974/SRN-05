@@ -77,7 +77,7 @@
 
 
 // set frequency from 25 to 5000 hZ
-#define _Set_Motor_freq(a) 	__HAL_TIM_SET_PRESCALER(&htim3, (uint32_t)50000/a); //__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,125000/(a*2)); 	 
+#define _Set_Motor_freq(a) 	__HAL_TIM_SET_PRESCALER(&htim3, (uint32_t)(50000UL/a)); //__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,125000/(a*2)); 	 
 
 
 /* USER CODE END Private defines */
