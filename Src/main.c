@@ -1041,7 +1041,7 @@ if (run_state==IDLE)  {
           //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
     
               __HAL_TIM_SetCounter(&htim1,0UL);
-					    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider); 
+					    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider-1); 
 	            __HAL_TIM_SetAutoreload(&htim1,program.divider);
 	  
 	       state = HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
@@ -1114,7 +1114,7 @@ if (run_state==IDLE)  {
 											 HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1); 
 											 _STEPPER_DISABLE();
 											 HAL_Delay(700);
-											 _Set_Motor_freq(700); //extra step speed
+											 _Set_Motor_freq(1000); //extra step speed fixed
 											 displayNumberHigh(program.coil_extra);
 											  printf("extra step=%d  \n",program.extra_mode);
 											  }         
@@ -1193,7 +1193,7 @@ if (run_state==IDLE)  {
 				     	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
           //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
 				 __HAL_TIM_SetCounter(&htim1,0UL);    
-	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra-1); 
 	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
 	  
 	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
@@ -1226,7 +1226,7 @@ if (run_state==IDLE)  {
 				 	       HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
           //  (&htim3)->Instance->CR1|=(TIM_CR1_ARPE);
        __HAL_TIM_SetCounter(&htim1,0UL);      
-	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra); 
+	    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,program.divider_extra-1); 
 	    __HAL_TIM_SetAutoreload(&htim1,program.divider_extra);
 	  
 	      HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
